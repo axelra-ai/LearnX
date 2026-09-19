@@ -29,6 +29,16 @@ FORMATTING RULES (bahut important):
 
 const MAX_OUTPUT_TOKENS = 1536;
 
+// Free-tier models me se har ek ki apni daily/per-minute limit hoti hai.
+// Isliye ek se zyada model list kiye hain: pehla try hota hai, agar uski
+// quota khatam ho jaaye (429 error) to khud-ba-khud agla model try hota
+// hai — manually har din file edit karke redeploy karne ki zaroorat nahi.
+const MODEL_FALLBACK_LIST = [
+  'gemini-3.6-flash',
+  'gemini-3.6-flash-lite',
+  'gemini-2.5-flash',
+];
+
 // Chhota, dependency-free Markdown → safe HTML converter.
 // (Ek external library "marked" use ki thi pehle, lekin uska naya version
 // Vercel ke build system ke saath clash kar raha tha — isliye apna khud ka,
@@ -134,18 +144,35 @@ export default async function handler(req, res) {
     }));
     const last = messages[messages.length - 1];
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: SYSTEM_INSTRUCTION,
-    });
+    let rawText = null;
+    let lastErr = null;
 
-    const chat = model.startChat({
-      history,
-      generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 },
-    });
+    for (const modelName of MODEL_FALLBACK_LIST) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_INSTRUCTION,
+        });
+        const chat = model.startChat({
+          history,
+          generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 },
+        });
+        const result = await chat.sendMessage(stripHtml(last.content));
+        rawText = result.response.text();
+        break; // is model se jawab mil gaya, aage koi aur try karne ki zaroorat nahi
+      } catch (err) {
+        lastErr = err;
+        const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
+        // 429 = quota/rate-limit khatam, 404 = model available nahi — dono cases me agla model try karo
+        if (status === 429 || status === 404) { continue; }
+        throw err; // koi aur (jaise auth) error ho to turant band karo, aage try mat karo
+      }
+    }
 
-    const result = await chat.sendMessage(stripHtml(last.content));
-    const rawText = result.response.text();
+    if (rawText === null) {
+      console.error('Sab models fail ho gaye:', lastErr);
+      return res.status(500).json({ error: 'AI abhi kisi bhi model se jawab nahi de paya. Thodi der baad try karo.' });
+    }
 
     const html = mdToHtml(rawText);
 
