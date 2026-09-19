@@ -2635,7 +2635,8 @@ function sendAIMsg(preset) {
     return data;
   }).then(data => {
     thinking.remove();
-    const reply = data.reply || data.message || data.content || generateReply(text);
+    const reply = data.reply || data.message || data.content;
+    if (!reply) { showToast('AI se koi jawab nahi mila, dobara try karo', 'alert-circle'); chat.messages.pop(); save(); renderChatMessages(); return; }
     chat.messages.push({ role: 'ai', content: reply, date: Date.now() });
     save(); renderChatMessages(); checkAchievements();
   }).catch(err => {
@@ -2650,9 +2651,8 @@ function sendAIMsg(preset) {
       chat.messages.pop(); save(); renderChatMessages();
       return;
     }
-    const reply = generateReply(text);
-    chat.messages.push({ role: 'ai', content: reply, date: Date.now() });
-    save(); renderChatMessages(); checkAchievements();
+    showToast('AI se connect nahi ho paaya, dobara try karo', 'wifi-off');
+    chat.messages.pop(); save(); renderChatMessages();
   });
 }
 function generateReply(text) {
