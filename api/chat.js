@@ -8,10 +8,9 @@
 // dikhe — headings, bullet points, code blocks — sirf plain text nahi.
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { marked } from 'marked';
-import sanitizeHtml from 'sanitize-html';
 import { getUserFromReq } from '../lib/auth.js';
 import { checkRateLimit } from '../lib/ratelimit.js';
+import { sql } from '../lib/db.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -30,6 +29,76 @@ FORMATTING RULES (bahut important):
 
 const MAX_OUTPUT_TOKENS = 1536;
 
+// Chhota, dependency-free Markdown → safe HTML converter.
+// (Ek external library "marked" use ki thi pehle, lekin uska naya version
+// Vercel ke build system ke saath clash kar raha tha — isliye apna khud ka,
+// zero-dependency converter likh diya. Isse fenced code blocks, bold,
+// headings, aur bullet/numbered lists sab format ho jaate hain.)
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function inlineFormat(text) {
+  let t = escapeHtml(text);
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return t;
+}
+
+function mdToHtml(raw) {
+  const lines = String(raw || '').replace(/\r\n/g, '\n').split('\n');
+  let html = '';
+  let inCode = false, codeBuf = [];
+  let listType = null; // 'ul' | 'ol' | null
+  let paraBuf = [];
+
+  const flushPara = () => {
+    if (paraBuf.length) { html += `<p>${paraBuf.join(' ')}</p>`; paraBuf = []; }
+  };
+  const closeList = () => {
+    if (listType) { html += listType === 'ul' ? '</ul>' : '</ol>'; listType = null; }
+  };
+
+  for (const line of lines) {
+    const fence = line.match(/^```/);
+    if (fence) {
+      if (!inCode) { flushPara(); closeList(); inCode = true; codeBuf = []; }
+      else { html += `<pre><code>${escapeHtml(codeBuf.join('\n'))}</code></pre>`; inCode = false; }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+
+    const heading = line.match(/^(#{1,4})\s+(.*)/);
+    if (heading) {
+      flushPara(); closeList();
+      const level = Math.min(heading[1].length + 1, 4);
+      html += `<h${level}>${inlineFormat(heading[2])}</h${level}>`;
+      continue;
+    }
+
+    const bullet = line.match(/^\s*[-*]\s+(.*)/);
+    const numbered = line.match(/^\s*\d+[.)]\s+(.*)/);
+    if (bullet || numbered) {
+      flushPara();
+      const type = bullet ? 'ul' : 'ol';
+      if (listType !== type) { closeList(); html += type === 'ul' ? '<ul>' : '<ol>'; listType = type; }
+      html += `<li>${inlineFormat(bullet ? bullet[1] : numbered[1])}</li>`;
+      continue;
+    }
+
+    if (line.trim() === '') { flushPara(); closeList(); continue; }
+
+    paraBuf.push(inlineFormat(line.trim()));
+  }
+  flushPara(); closeList();
+  if (inCode && codeBuf.length) html += `<pre><code>${escapeHtml(codeBuf.join('\n'))}</code></pre>`;
+  return html;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -38,6 +107,11 @@ export default async function handler(req, res) {
   const user = getUserFromReq(req);
   if (!user) {
     return res.status(401).json({ error: 'Pehle login karo, phir AI se baat karo.' });
+  }
+
+  const banRows = await sql`select is_banned from users where id = ${user.uid}`;
+  if (banRows[0] && banRows[0].is_banned) {
+    return res.status(403).json({ error: 'Ye account suspend kiya gaya hai.' });
   }
 
   const allowed = await checkRateLimit(user.uid);
@@ -73,21 +147,7 @@ export default async function handler(req, res) {
     const result = await chat.sendMessage(stripHtml(last.content));
     const rawText = result.response.text();
 
-    const html = sanitizeHtml(marked.parse(rawText), {
-      allowedTags: [
-        'b', 'i', 'em', 'strong', 'a', 'p', 'ul', 'ol', 'li', 'code', 'pre',
-        'br', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'table', 'thead', 'tbody',
-        'tr', 'th', 'td', 'span', 'hr',
-      ],
-      allowedAttributes: {
-        a: ['href', 'target', 'rel'],
-        span: ['class'],
-        code: ['class'],
-      },
-      transformTags: {
-        a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer' }),
-      },
-    });
+    const html = mdToHtml(rawText);
 
     return res.status(200).json({ reply: html });
   } catch (err) {
