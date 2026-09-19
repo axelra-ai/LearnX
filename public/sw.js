@@ -1,8 +1,11 @@
 // Bahut simple service worker — sirf app shell cache karta hai taaki
 // dobara visit pe website jaldi khule. API calls (/api/...) kabhi cache
 // nahi hoti, wo hamesha live network se jaati hain.
+//
+// "network-first" strategy: pehle live version try karta hai (naye updates
+// turant milein), tabhi cache use hota hai jab internet na ho.
 
-const CACHE_NAME = 'learnx-v1';
+const CACHE_NAME = 'learnx-v2';
 const SHELL_FILES = ['/'];
 
 self.addEventListener('install', (event) => {
@@ -28,6 +31,12 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((res) => {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
