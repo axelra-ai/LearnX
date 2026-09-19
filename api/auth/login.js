@@ -18,11 +18,14 @@ export default async function handler(req, res) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const rows = await sql`select id, name, email, password_hash from users where email = ${normalizedEmail}`;
+    const rows = await sql`select id, name, email, password_hash, is_banned from users where email = ${normalizedEmail}`;
     const user = rows[0];
 
     if (!user || !user.password_hash) {
       return res.status(401).json({ error: 'Email ya password galat hai.' });
+    }
+    if (user.is_banned) {
+      return res.status(403).json({ error: 'Ye account suspend kiya gaya hai. Support se contact karo.' });
     }
 
     const valid = await comparePassword(password, user.password_hash);
