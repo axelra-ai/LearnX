@@ -34,7 +34,6 @@ const MAX_OUTPUT_TOKENS = 1536;
 // quota khatam ho jaaye (429 error) to khud-ba-khud agla model try hota
 // hai — manually har din file edit karke redeploy karne ki zaroorat nahi.
 const MODEL_FALLBACK_LIST = [
-  'gemini-3.6-flash',
   'gemini-3.6-flash-lite',
   'gemini-2.5-flash',
 ];
