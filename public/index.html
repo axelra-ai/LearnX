@@ -10,12 +10,13 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23d4a574'/><stop offset='1' stop-color='%23e8c89a'/></linearGradient></defs><rect width='100' height='100' rx='24' fill='url(%23g)'/><text x='50' y='68' font-size='52' font-weight='700' text-anchor='middle' fill='%230a0a0f' font-family='serif'>L</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://accounts.google.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // Google Cloud Console se mila OAuth Client ID yahan daalo (README dekho).
-  window.GOOGLE_CLIENT_ID = "1089843129970-emkfn2kma64dunqf6sl9qo31qlu88if7.apps.googleusercontent.com";
+  window.GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 </script>
 <style>
 /* ========== RESET ========== */
@@ -1073,6 +1074,10 @@ body.focus-mode .focus-exit{display:flex}
         <div class="side-nav" data-nav="flashcards" onclick="nav('flashcards')"><i data-lucide="layers"></i><span>Flashcards</span></div>
         <div class="side-nav" data-nav="certificates" onclick="nav('certificates')"><i data-lucide="award"></i><span>Certificates</span></div>
       </div>
+      <div class="side-section" id="adminNavSection" style="display:none">
+        <div class="side-section-title">Admin</div>
+        <div class="side-nav" data-nav="admin" onclick="nav('admin')"><i data-lucide="shield"></i><span>Admin Panel</span></div>
+      </div>
       <div class="side-section">
         <div class="side-section-title">Progress</div>
         <div class="side-nav" data-nav="profile" onclick="nav('profile')"><i data-lucide="user-circle"></i><span>Profile</span></div>
@@ -1080,6 +1085,7 @@ body.focus-mode .focus-exit{display:flex}
       </div>
       <div class="side-section">
         <div class="side-nav" data-nav="settings" onclick="nav('settings')"><i data-lucide="settings"></i><span>Settings</span></div>
+        <div class="side-nav" data-nav="admin" id="adminNavItem" onclick="nav('admin')" style="display:none"><i data-lucide="shield"></i><span>Admin Panel</span></div>
       </div>
       <div class="side-user" onclick="nav('profile')">
         <div class="avatar" id="sideUserAvatar">A</div>
@@ -1399,8 +1405,11 @@ body.focus-mode .focus-exit{display:flex}
         <div class="page" id="page-flashcards"><div class="page-head"><div class="page-head-text"><span class="eyebrow"><i data-lucide="layers"></i> Review</span><h1>Flashcards</h1><p>Flip cards to review concepts.</p></div><button class="btn btn-primary" onclick="createFlashcard()" type="button"><i data-lucide="plus"></i>New Card</button></div><div id="flashcardsContent"></div></div>
         <div class="page" id="page-certificates"><div class="page-head"><div class="page-head-text"><span class="eyebrow"><i data-lucide="award"></i> Achievements</span><h1>Certificates</h1><p>Certificates earned by completing courses.</p></div></div><div id="certificatesContent"></div></div>
         <div class="page" id="page-achievements"><div class="page-head"><div class="page-head-text"><span class="eyebrow"><i data-lucide="trophy"></i> Milestones</span><h1>Achievements</h1><p>Unlock badges as you learn and grow.</p></div></div><div id="achievementsContent"></div></div>
+        <div class="page" id="page-courseLevels"></div>
         <div class="page" id="page-courseDetail"></div>
         <div class="page" id="page-lesson"></div>
+        <div class="page" id="page-admin"></div>
+        <div class="page" id="page-quizTake"></div>
 
         <!-- AI CHAT (FULL PAGE) -->
         <div class="page" id="page-ai">
@@ -1638,6 +1647,14 @@ body.focus-mode .focus-exit{display:flex}
 
 <div class="focus-exit"><button class="focus-exit-btn" onclick="exitFocusMode()"><i data-lucide="x"></i>Exit Focus Mode</button></div>
 
+<div class="modal-overlay" id="adminQuizModal">
+  <div class="modal" style="max-width:560px">
+    <h3 id="adminQuizModalTitle">Quiz</h3>
+    <p class="modal-sub">AI se 20 sawaal generate karo, chaho to edit bhi kar sakte ho.</p>
+    <div id="adminQuizModalBody"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeAdminQuizModal()" type="button">Close</button></div>
+  </div>
+</div>
 <div class="modal-overlay" id="editNameModal">
   <div class="modal">
     <h3>Edit Name</h3>
@@ -1703,6 +1720,10 @@ async function loadServerState() {
   if (!getToken()) return false;
   try {
     const data = await apiFetch('/api/state/get');
+    State.user = State.user || {};
+    State.user.isAdmin = !!data.isAdmin;
+    const adminNav = document.getElementById('adminNavSection');
+    if (adminNav) adminNav.style.display = State.user.isAdmin ? '' : 'none';
     State.progress = data.progress || {};
     State.notes = data.notes || {};
     State.bookmarks = data.bookmarks || [];
@@ -1713,6 +1734,7 @@ async function loadServerState() {
     State.chats = data.chats || [];
     if (data.settings) Object.assign(Settings, data.settings);
     save(); saveSettings();
+    applyAdminVisibility();
     return true;
   } catch (e) {
     console.warn('Server se state load nahi hua, local data use ho raha hai.', e);
@@ -1822,18 +1844,6 @@ const COURSES = [
       { title: 'What is Machine Learning?', duration: '16 min', video: 'https://www.youtube.com/embed/ukzFI9rgwfU' },
       { title: 'Supervised Learning — Regression', duration: '30 min', video: 'https://www.youtube.com/embed/PaFPbb66DxQ' },
       { title: 'Building Your First Model', duration: '34 min', video: 'https://www.youtube.com/embed/7eh4d6sabA0' }
-    ]}
-  ]},
-  { id: 'se-fundamentals', catId: 'software-eng', catName: 'Software Engineering', title: 'Software Engineering Fundamentals', desc: 'Core concepts every software engineer should know.', instructor: 'LearnX Curated', level: 'Beginner', totalLessons: 6, duration: '4h 10m', icon: 'code', grad: 'linear-gradient(135deg,#d4a574,#c96442)', modules: [
-    { title: 'Module 1 — Foundations', lessons: [
-      { title: 'What is Software Engineering?', duration: '20 min', video: 'https://www.youtube.com/embed/O753uuutqH8' },
-      { title: 'Software Development Life Cycle', duration: '24 min', video: 'https://www.youtube.com/embed/i_LwzRVP7bg' },
-      { title: 'Agile & Scrum Basics', duration: '18 min', video: 'https://www.youtube.com/embed/ZZy5cxweKFM' }
-    ]},
-    { title: 'Module 2 — Design & Quality', lessons: [
-      { title: 'SOLID Principles', duration: '28 min', video: 'https://www.youtube.com/embed/zHi8oo1rhRc' },
-      { title: 'Design Patterns Overview', duration: '32 min', video: 'https://www.youtube.com/embed/tv-_1er1mWI' },
-      { title: 'Testing Fundamentals', duration: '26 min', video: 'https://www.youtube.com/embed/8gYvNe6N6LQ' }
     ]}
   ]},
   { id: 'cloud-fundamentals', catId: 'cloud', catName: 'Cloud Computing', title: 'Cloud Computing Essentials', desc: 'Understand cloud concepts, AWS fundamentals.', instructor: 'LearnX Curated', level: 'Beginner', totalLessons: 6, duration: '3h 50m', icon: 'cloud', grad: 'linear-gradient(135deg,#6b8bb5,#4a6b8a)', modules: [
@@ -2057,9 +2067,9 @@ async function doLogin() {
     setToken(data.token);
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
-    await loadServerState();
     playSound('success'); showToast('Welcome back!', 'check-circle-2');
-    setTimeout(enterApp, 400);
+    setTimeout(enterApp, 200);
+    loadServerState().then(ok => { if (ok) renderAll(); }); // background me sync, app turant khulta hai
   } catch (e) {
     if (e && e.status) {
       // Backend ne jawab diya (jaise galat password) — asli error dikhao
@@ -2115,11 +2125,10 @@ async function doSignup() {
 }
 function oauthLogin(p) {
   if (p !== 'Google') { showToast(`${p} sign-in jald aa raha hai`, 'info'); return; }
-  if (!window.google || !window.GOOGLE_CLIENT_ID || window.GOOGLE_CLIENT_ID.startsWith('YOUR_')) {
+  if (!ensureGoogleInit()) {
     showToast('Google sign-in abhi configure nahi hua — README dekho', 'alert-circle');
     return;
   }
-  google.accounts.id.initialize({ client_id: window.GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
   google.accounts.id.prompt();
 }
 async function handleGoogleCredential(response) {
@@ -2128,18 +2137,38 @@ async function handleGoogleCredential(response) {
     setToken(data.token);
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
-    await loadServerState();
     playSound('success'); showToast('Welcome, ' + data.user.name.split(' ')[0] + '!', 'check-circle-2');
-    setTimeout(enterApp, 300);
+    setTimeout(enterApp, 150);
+    loadServerState().then(ok => { if (ok) renderAll(); }); // background me sync, app turant khulta hai
   } catch (e) {
     showToast('Google sign-in fail hua', 'alert-circle');
   }
 }
+
+// Google Identity Services ko page load hote hi taiyar kar dete hain (button
+// dabane ka wait nahi karte), taaki click karte hi popup turant khule —
+// pehle ye initialize() button click pe hi hota tha, jisse thoda delay lagta tha.
+let _googleInited = false;
+function ensureGoogleInit() {
+  if (_googleInited) return true;
+  if (window.google && window.google.accounts && window.GOOGLE_CLIENT_ID && !window.GOOGLE_CLIENT_ID.startsWith('YOUR_')) {
+    google.accounts.id.initialize({ client_id: window.GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
+    _googleInited = true;
+    return true;
+  }
+  return false;
+}
+(function pollGoogleInit() {
+  if (ensureGoogleInit()) return;
+  let tries = 0;
+  const t = setInterval(() => { tries++; if (ensureGoogleInit() || tries > 30) clearInterval(t); }, 200);
+})();
 function forgotPass() { const email = document.getElementById('loginEmail').value.trim(); if (!email) { showAuthError('loginError', 'Enter your email first'); return; } showToast('Reset link sent to ' + email, 'mail'); }
 function enterApp() {
   document.getElementById('authScreen').classList.remove('show');
   document.getElementById('app').classList.add('show');
   checkStreak(); applyUser(); applyAllSettings(); renderAll();
+  loadCoursesFromServer().then(() => { if (currentPage === 'courses') renderCourseCategories(); });
   if (!DB.get('onboarded', false)) {
     setTimeout(() => { document.getElementById('onboarding').classList.add('show'); }, 800);
   }
@@ -2172,7 +2201,7 @@ function applyUser() {
 
 /* NAV */
 let currentPage = 'home';
-const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings' };
+const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   const el = document.getElementById('page-' + p); if (!el) return;
@@ -2189,6 +2218,8 @@ function nav(p) {
   if (p === 'settings') applyAllSettings();
   if (p === 'bookmarks') renderBookmarks();
   if (p === 'quiz') renderQuizzes();
+  if (p === 'admin') renderAdmin();
+  if (p === 'courses' && !_coursesServerLoaded) loadCoursesFromServer().then(renderCourseCategories);
   if (p === 'flashcards') renderFlashcards();
   if (p === 'certificates') renderCertificates();
   if (p === 'achievements') renderAchievements();
@@ -2445,6 +2476,7 @@ function openCategory(catId) {
 }
 function openCourse(courseId) {
   const c = COURSES.find(x => x.id === courseId); if (!c) return;
+  if (c.levelType && c.levelType !== 'none' && !c._activeLevelId) { openCourseLevels(courseId); return; }
   State.recent = [courseId, ...State.recent.filter(r => r !== courseId)].slice(0, 8); save();
   const page = document.getElementById('page-courseDetail');
   page.classList.add('active');
@@ -2456,6 +2488,375 @@ function openCourse(courseId) {
   lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
 }
 function toggleModule(i) { document.getElementById('mod-' + i).classList.toggle('open'); }
+
+/* ================= DYNAMIC (ADMIN-MANAGED) COURSES ================= */
+function groupLessonsIntoModules(lessons) {
+  const map = new Map();
+  for (const l of lessons) {
+    const key = l.moduleTitle || 'Module 1';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push({ title: l.title, duration: l.duration || '', video: l.video, _dbId: l.id });
+  }
+  return [...map.entries()].map(([title, lessons]) => ({ title, lessons }));
+}
+function transformServerCourse(sc) {
+  const cc = {
+    id: sc.id, catId: sc.catId, catName: sc.catName, title: sc.title, desc: sc.desc || '',
+    instructor: sc.instructor || 'LearnX Curated', level: sc.level || 'Beginner',
+    icon: sc.icon || 'book-open', grad: sc.grad || 'linear-gradient(135deg,#d4a574,#c96442)',
+    levelType: sc.levelType || 'none', levels: sc.levels || [], _rawLessons: sc.lessons || [],
+    duration: '', _dynamic: true,
+  };
+  if (cc.levelType === 'none') {
+    cc.modules = groupLessonsIntoModules(cc._rawLessons);
+    cc.totalLessons = cc._rawLessons.length;
+  } else {
+    cc.modules = [];
+    cc.totalLessons = cc._rawLessons.length;
+  }
+  return cc;
+}
+let _coursesServerLoaded = false;
+async function loadCoursesFromServer() {
+  try {
+    const data = await fetch('/api/courses').then(r => r.json());
+    (data.courses || []).forEach(sc => {
+      const idx = COURSES.findIndex(x => x.id === sc.id);
+      const transformed = transformServerCourse(sc);
+      if (idx >= 0) COURSES[idx] = transformed; else COURSES.push(transformed);
+    });
+    _coursesServerLoaded = true;
+  } catch (e) { console.warn('Courses server load fail:', e); }
+}
+
+function openCourseLevels(courseId) {
+  const c = COURSES.find(x => x.id === courseId); if (!c) return;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-courseLevels');
+  page.classList.add('active'); currentPage = 'courseLevels';
+  document.getElementById('topbarTitle').textContent = c.title;
+  const levels = c.levels || [];
+  const label = c.levelType === 'semester' ? 'Semester' : 'Class';
+  page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="course-hero"><div class="course-hero-inner"><span class="eyebrow"><i data-lucide="${c.icon}"></i>${c.catName}</span><div class="course-hero-top"><div class="course-hero-icon" style="background:${c.grad}"><i data-lucide="${c.icon}"></i></div><div class="course-hero-info"><h1>${c.title}</h1><p>${c.desc}</p></div></div></div></div><div class="section-head"><h3><i data-lucide="layers"></i> Select ${label}</h3></div>${levels.length === 0 ? `<div class="empty-state"><i data-lucide="construction"></i><h3>Coming soon</h3><p>Is course me abhi tak koi ${label.toLowerCase()} add nahi hui hai. Admin Panel se add karo.</p></div>` : `<div class="category-grid">${levels.map(lv => `<div class="category-card" onclick="openCourseLevelDetail('${c.id}','${lv.id}')"><div class="category-icon" style="background:${c.grad}"><i data-lucide="layers"></i></div><h4>${esc(lv.name)}</h4><p>Tap to view lessons</p></div>`).join('')}</div>`}`;
+  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function openCourseLevelDetail(courseId, levelId) {
+  const c = COURSES.find(x => x.id === courseId); if (!c) return;
+  const lessonsForLevel = (c._rawLessons || []).filter(l => l.levelId === levelId);
+  c.modules = groupLessonsIntoModules(lessonsForLevel);
+  c.totalLessons = lessonsForLevel.length;
+  c._activeLevelId = levelId;
+  openCourse(courseId);
+}
+
+/* ================= LESSON QUIZ (min 20 questions, per lesson) ================= */
+let _activeQuiz = { lessonId: null, questions: [], answers: {} };
+async function openLessonQuiz(lessonId, lessonTitle) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-quizTake');
+  page.classList.add('active'); currentPage = 'quizTake';
+  document.getElementById('topbarTitle').textContent = 'Quiz — ' + lessonTitle;
+  page.innerHTML = `<div class="empty-state"><i data-lucide="loader"></i><h3>Loading quiz...</h3></div>`;
+  lucide.createIcons();
+  try {
+    const data = await apiFetch('/api/quiz-take?lessonId=' + encodeURIComponent(lessonId));
+    if (!data.questions || !data.questions.length) {
+      page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="history.back()" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="empty-state"><i data-lucide="help-circle"></i><h3>Quiz abhi taiyar nahi hai</h3><p>Admin ne is lesson ka quiz abhi generate nahi kiya.</p></div>`;
+      lucide.createIcons(); return;
+    }
+    _activeQuiz = { lessonId, questions: data.questions, answers: {} };
+    renderQuizTake();
+  } catch (e) {
+    page.innerHTML = `<div class="empty-state"><i data-lucide="alert-circle"></i><h3>Quiz load nahi ho paaya</h3><p>Dobara try karo.</p></div>`;
+    lucide.createIcons();
+  }
+}
+function renderQuizTake() {
+  const page = document.getElementById('page-quizTake');
+  const q = _activeQuiz;
+  page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="section-head"><h3><i data-lucide="help-circle"></i> Quiz — ${q.questions.length} Questions</h3></div><div id="quizTakeList">${q.questions.map((qq, i) => `<div class="side-panel" style="margin-bottom:14px"><h3 style="font-size:14.5px">${i + 1}. ${esc(qq.question)}</h3><div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${qq.options.map((opt, oi) => `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer"><input type="radio" name="q_${qq.id}" value="${oi}" onchange="_activeQuiz.answers['${qq.id}']=${oi}"><span style="font-size:13.5px">${esc(opt)}</span></label>`).join('')}</div></div>`).join('')}</div><button class="btn btn-primary btn-block" onclick="submitQuizTake()" type="button"><i data-lucide="check-circle-2"></i>Submit Quiz</button>`;
+  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+}
+async function submitQuizTake() {
+  const q = _activeQuiz;
+  const unanswered = q.questions.filter(qq => q.answers[qq.id] === undefined).length;
+  if (unanswered > 0 && !confirm(unanswered + ' sawaal chhoot gaye hain, phir bhi submit karein?')) return;
+  try {
+    const data = await apiFetch('/api/quiz-take', { method: 'POST', body: JSON.stringify({ lessonId: q.lessonId, answers: q.answers }) });
+    const page = document.getElementById('page-quizTake');
+    const pct = data.total ? Math.round((data.score / data.total) * 100) : 0;
+    page.innerHTML = `<div class="empty-state"><i data-lucide="award"></i><h3>Quiz Complete!</h3><p>Tumhara score: <strong>${data.score} / ${data.total}</strong> (${pct}%)</p><button class="btn btn-primary" onclick="nav('courses')" type="button" style="margin-top:14px">Back to Courses</button></div>`;
+    lucide.createIcons();
+    if (pct >= 60) { addXP(30); showToast('Quiz clear! +30 XP', 'check-circle-2'); }
+  } catch (e) {
+    showToast('Quiz submit nahi ho paya, dobara try karo', 'alert-circle');
+  }
+}
+
+/* ================= ADMIN PANEL — courses/levels/lessons/quiz banana ================= */
+function toYouTubeEmbed(url) {
+  url = String(url || '').trim();
+  if (!url) return '';
+  if (url.includes('/embed/')) return url;
+  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
+  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{6,})/);
+  let id = '';
+  if (watchMatch) id = watchMatch[1];
+  else if (shortMatch) id = shortMatch[1];
+  else if (/^[a-zA-Z0-9_-]{6,}$/.test(url)) id = url;
+  return id ? `https://www.youtube.com/embed/${id}` : url;
+}
+const ALL_CATS = [...TECH, ...SCHOOL, ...PROG];
+function adminCatOptionsHTML() {
+  const groups = [['Technology', TECH], ['School Subjects', SCHOOL], ['Programming', PROG]];
+  return groups.map(([label, arr]) => `<optgroup label="${label}">${arr.map(x => `<option value="${x.id}">${x.name}</option>`).join('')}</optgroup>`).join('');
+}
+
+let _adminCourses = [];
+let _adminLevelsCache = {};
+let _adminLessonsCache = {};
+let _adminSelectedLevelByCourse = {};
+
+async function renderAdmin() {
+  const page = document.getElementById('page-admin');
+  page.innerHTML = `<div class="empty-state"><i data-lucide="loader"></i><h3>Loading admin panel...</h3></div>`;
+  lucide.createIcons();
+  try {
+    const data = await apiFetch('/api/admin/courses');
+    _adminCourses = data.courses || [];
+    renderAdminUI();
+  } catch (e) {
+    page.innerHTML = `<div class="empty-state"><i data-lucide="shield-off"></i><h3>Access denied</h3><p>Ye page sirf admin account ke liye hai.</p></div>`;
+    lucide.createIcons();
+  }
+}
+function renderAdminUI() {
+  const page = document.getElementById('page-admin');
+  page.innerHTML = `<div class="page-head"><div class="page-head-text"><span class="eyebrow"><i data-lucide="shield"></i> Admin</span><h1>Course Manager</h1><p>Naye courses, classes/semesters aur lessons add karo — bina code chhue. Naya course add karte hi website pe turant dikhega.</p></div></div>
+    <div class="side-panel" style="margin-bottom:20px">
+      <h3><span><i data-lucide="plus-circle"></i>Add New Course</span></h3>
+      <div class="field"><label class="field-label">Category</label><select class="field-input" id="admCourseCat">${adminCatOptionsHTML()}</select></div>
+      <div class="field"><label class="field-label">Course Title</label><input class="field-input" id="admCourseTitle" placeholder="e.g. Software Engineering Fundamentals"></div>
+      <div class="field"><label class="field-label">Description</label><input class="field-input" id="admCourseDesc" placeholder="Short description"></div>
+      <div class="field"><label class="field-label">Structure</label><select class="field-input" id="admCourseLevelType">
+        <option value="none">Simple (direct lessons — jaise Web Dev, C++)</option>
+        <option value="class">Class-wise (School — 9th, 10th, 11th, 12th)</option>
+        <option value="semester">Semester-wise (College — Semester 1 to 8)</option>
+      </select></div>
+      <button class="btn btn-primary" onclick="adminAddCourse()" type="button"><i data-lucide="plus"></i>Create Course</button>
+    </div>
+    <div class="section-head"><h3><i data-lucide="list"></i> Your Courses</h3></div>
+    <div id="admCoursesList">${_adminCourses.length ? _adminCourses.map(adminCourseCardHTML).join('') : '<div class="empty-state"><i data-lucide="inbox"></i><h3>Koi course nahi hai</h3><p>Upar se pehla course add karo.</p></div>'}</div>`;
+  lucide.createIcons();
+}
+function adminCourseCardHTML(c) {
+  const typeLabel = c.level_type === 'none' ? 'Simple course' : (c.level_type === 'semester' ? 'Semester-wise' : 'Class-wise');
+  return `<div class="side-panel" style="margin-bottom:14px" id="admCourse_${c.id}">
+    <h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span><i data-lucide="book-open"></i> ${esc(c.title)} <small style="color:var(--text-dim);font-weight:400">(${esc(c.cat_name)})</small></span><button class="btn-icon" onclick="adminDeleteCourse('${c.id}')" title="Delete course" type="button"><i data-lucide="trash-2"></i></button></h3>
+    <p style="font-size:12.5px;color:var(--text-dim);margin:4px 0 10px">${typeLabel}</p>
+    <button class="btn btn-secondary btn-sm" onclick="adminToggleManage('${c.id}')" type="button"><i data-lucide="settings-2"></i>Manage Levels &amp; Lessons</button>
+    <div id="admManage_${c.id}"></div>
+  </div>`;
+}
+async function adminAddCourse() {
+  const catSel = document.getElementById('admCourseCat');
+  const catId = catSel.value;
+  const catName = catSel.options[catSel.selectedIndex].textContent;
+  const title = document.getElementById('admCourseTitle').value.trim();
+  const description = document.getElementById('admCourseDesc').value.trim();
+  const levelType = document.getElementById('admCourseLevelType').value;
+  if (!title) { showToast('Course title daalo', 'alert-circle'); return; }
+  try {
+    await apiFetch('/api/admin/courses', { method: 'POST', body: JSON.stringify({ catId, catName, title, description, levelType }) });
+    document.getElementById('admCourseTitle').value = '';
+    document.getElementById('admCourseDesc').value = '';
+    _coursesServerLoaded = false;
+    renderAdmin();
+    showToast('Course ban gaya!', 'check-circle-2');
+  } catch (e) { showToast('Course banane me dikkat aayi', 'alert-circle'); }
+}
+async function adminDeleteCourse(courseId) {
+  if (!confirm('Poora course delete karein? Iske saare levels/lessons/quiz bhi chale jaayenge.')) return;
+  try {
+    await apiFetch('/api/admin/courses?id=' + encodeURIComponent(courseId), { method: 'DELETE' });
+    _coursesServerLoaded = false;
+    renderAdmin();
+    showToast('Course delete ho gaya', 'trash-2');
+  } catch (e) { showToast('Delete nahi ho paya', 'alert-circle'); }
+}
+async function adminToggleManage(courseId) {
+  const box = document.getElementById('admManage_' + courseId);
+  if (box.dataset.open === '1') { box.innerHTML = ''; box.dataset.open = '0'; return; }
+  box.dataset.open = '1';
+  box.innerHTML = `<div class="empty-state" style="padding:20px"><i data-lucide="loader"></i></div>`;
+  lucide.createIcons();
+  const course = _adminCourses.find(x => x.id === courseId);
+  let levels = [];
+  if (course.level_type !== 'none') {
+    try {
+      const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+      levels = data.levels || [];
+    } catch (e) {}
+  }
+  _adminLevelsCache[courseId] = levels;
+  renderAdminManageBox(courseId);
+}
+function renderAdminManageBox(courseId) {
+  const course = _adminCourses.find(x => x.id === courseId);
+  const box = document.getElementById('admManage_' + courseId);
+  if (!box) return;
+  const levels = _adminLevelsCache[courseId] || [];
+  let html = '';
+  if (course.level_type !== 'none') {
+    const label = course.level_type === 'semester' ? 'Semester' : 'Class';
+    const selected = _adminSelectedLevelByCourse[courseId];
+    html += `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"><h4 style="font-size:13px;margin-bottom:8px">${label}s</h4>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${levels.length ? levels.map(lv => `<span class="tag" style="cursor:pointer;${selected === lv.id ? 'background:var(--grad-gold);color:#0a0a0f' : ''}" onclick="adminSelectLevel('${courseId}','${lv.id}')">${esc(lv.name)} <i data-lucide="x" style="width:10px;height:10px;margin-left:4px;vertical-align:middle" onclick="event.stopPropagation();adminDeleteLevel('${courseId}','${lv.id}')"></i></span>`).join('') : `<span style="font-size:12.5px;color:var(--text-dim)">Koi ${label.toLowerCase()} nahi hai abhi</span>`}</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px"><input class="field-input" id="admNewLevelName_${courseId}" placeholder="e.g. ${course.level_type === 'semester' ? 'Semester 1' : 'Class 9'}" style="flex:1"><button class="btn btn-secondary btn-sm" onclick="adminAddLevel('${courseId}')" type="button"><i data-lucide="plus"></i></button></div>
+    </div>`;
+  }
+  const selectedLevel = _adminSelectedLevelByCourse[courseId];
+  const canManageLessons = course.level_type === 'none' || selectedLevel;
+  html += `<div style="margin-top:10px">`;
+  if (!canManageLessons) {
+    html += `<p style="font-size:12.5px;color:var(--text-dim)">Pehle upar se ek ${course.level_type === 'semester' ? 'semester' : 'class'} select karo, tab lessons add kar paoge.</p>`;
+  } else {
+    const levelName = selectedLevel ? esc((levels.find(l => l.id === selectedLevel) || {}).name || '') : '';
+    html += `<h4 style="font-size:13px;margin-bottom:8px">Lessons ${levelName ? '(' + levelName + ')' : ''}</h4><div id="admLessonsList_${courseId}"><div class="empty-state" style="padding:14px"><i data-lucide="loader"></i></div></div>
+    <div class="field"><label class="field-label">Module name</label><input class="field-input" id="admLsnModule_${courseId}" value="Module 1"></div>
+    <div class="field"><label class="field-label">Lesson Title</label><input class="field-input" id="admLsnTitle_${courseId}" placeholder="e.g. What is Software Engineering?"></div>
+    <div class="field"><label class="field-label">Duration</label><input class="field-input" id="admLsnDuration_${courseId}" placeholder="e.g. 20 min"></div>
+    <div class="field"><label class="field-label">YouTube Link</label><input class="field-input" id="admLsnVideo_${courseId}" placeholder="Poora YouTube URL paste karo"></div>
+    <button class="btn btn-primary btn-sm" onclick="adminAddLesson('${courseId}')" type="button"><i data-lucide="plus"></i>Add Lesson</button>`;
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+  lucide.createIcons();
+  if (canManageLessons) adminLoadLessons(courseId);
+}
+function adminSelectLevel(courseId, levelId) {
+  _adminSelectedLevelByCourse[courseId] = levelId;
+  renderAdminManageBox(courseId);
+}
+async function adminAddLevel(courseId) {
+  const input = document.getElementById('admNewLevelName_' + courseId);
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    await apiFetch('/api/admin/levels', { method: 'POST', body: JSON.stringify({ courseId, name }) });
+    const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+    _adminLevelsCache[courseId] = data.levels || [];
+    input.value = '';
+    renderAdminManageBox(courseId);
+    _coursesServerLoaded = false;
+    showToast('Level add ho gaya', 'check-circle-2');
+  } catch (e) { showToast('Level add nahi ho paya', 'alert-circle'); }
+}
+async function adminDeleteLevel(courseId, levelId) {
+  if (!confirm('Ye level delete karein? Iske saare lessons bhi chale jaayenge.')) return;
+  try {
+    await apiFetch('/api/admin/levels?id=' + encodeURIComponent(levelId), { method: 'DELETE' });
+    const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+    _adminLevelsCache[courseId] = data.levels || [];
+    if (_adminSelectedLevelByCourse[courseId] === levelId) delete _adminSelectedLevelByCourse[courseId];
+    renderAdminManageBox(courseId);
+    _coursesServerLoaded = false;
+    showToast('Level delete ho gaya', 'trash-2');
+  } catch (e) { showToast('Delete nahi ho paya', 'alert-circle'); }
+}
+async function adminLoadLessons(courseId) {
+  const levelId = _adminSelectedLevelByCourse[courseId];
+  const url = '/api/admin/lessons?courseId=' + encodeURIComponent(courseId) + (levelId ? '&levelId=' + encodeURIComponent(levelId) : '');
+  try {
+    const data = await apiFetch(url);
+    _adminLessonsCache[courseId] = data.lessons || [];
+    renderAdminLessonsList(courseId);
+  } catch (e) {}
+}
+function renderAdminLessonsList(courseId) {
+  const el = document.getElementById('admLessonsList_' + courseId);
+  if (!el) return;
+  const lessons = _adminLessonsCache[courseId] || [];
+  el.innerHTML = lessons.length ? lessons.map(l => `<div class="lesson-item" style="cursor:default"><div class="lesson-info"><div class="lesson-title">${esc(l.title)}</div><div class="lesson-meta"><span><i data-lucide="clock"></i>${esc(l.duration || '')}</span><span>${esc(l.module_title || '')}</span></div></div><button class="btn-icon" onclick="adminOpenQuizEditor('${l.id}','${jsStr(l.title)}')" title="Quiz" type="button"><i data-lucide="help-circle"></i></button><button class="btn-icon" onclick="adminDeleteLesson('${courseId}','${l.id}')" title="Delete" type="button"><i data-lucide="trash-2"></i></button></div>`).join('') : '<p style="font-size:12.5px;color:var(--text-dim)">Koi lesson nahi hai abhi.</p>';
+  lucide.createIcons();
+}
+async function adminAddLesson(courseId) {
+  const moduleTitle = document.getElementById('admLsnModule_' + courseId).value.trim() || 'Module 1';
+  const title = document.getElementById('admLsnTitle_' + courseId).value.trim();
+  const duration = document.getElementById('admLsnDuration_' + courseId).value.trim() || '20 min';
+  const videoRaw = document.getElementById('admLsnVideo_' + courseId).value.trim();
+  if (!title || !videoRaw) { showToast('Title aur YouTube link zaroori hai', 'alert-circle'); return; }
+  const videoUrl = toYouTubeEmbed(videoRaw);
+  const levelId = _adminSelectedLevelByCourse[courseId] || null;
+  try {
+    await apiFetch('/api/admin/lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration, videoUrl }) });
+    document.getElementById('admLsnTitle_' + courseId).value = '';
+    document.getElementById('admLsnVideo_' + courseId).value = '';
+    await adminLoadLessons(courseId);
+    _coursesServerLoaded = false;
+    showToast('Lesson add ho gaya', 'check-circle-2');
+  } catch (e) { showToast('Lesson add nahi ho paya', 'alert-circle'); }
+}
+async function adminDeleteLesson(courseId, lessonId) {
+  if (!confirm('Ye lesson delete karein?')) return;
+  try {
+    await apiFetch('/api/admin/lessons?id=' + encodeURIComponent(lessonId), { method: 'DELETE' });
+    await adminLoadLessons(courseId);
+    _coursesServerLoaded = false;
+    showToast('Lesson delete ho gaya', 'trash-2');
+  } catch (e) { showToast('Delete nahi ho paya', 'alert-circle'); }
+}
+
+/* Quiz editor modal (AI generate + manual edit) */
+let _adminQuizLessonId = null;
+let _adminQuizQuestions = [];
+async function adminOpenQuizEditor(lessonId, lessonTitle) {
+  _adminQuizLessonId = lessonId;
+  const modal = document.getElementById('adminQuizModal');
+  document.getElementById('adminQuizModalTitle').textContent = 'Quiz — ' + lessonTitle;
+  document.getElementById('adminQuizModalBody').innerHTML = '<div class="empty-state" style="padding:20px"><i data-lucide="loader"></i></div>';
+  modal.classList.add('open');
+  lucide.createIcons();
+  try {
+    const data = await apiFetch('/api/admin/quiz?lessonId=' + encodeURIComponent(lessonId));
+    _adminQuizQuestions = (data.questions || []).map(q => ({ question: q.question, options: q.options, correctIndex: q.correct_index }));
+    renderAdminQuizEditor();
+  } catch (e) {
+    document.getElementById('adminQuizModalBody').innerHTML = '<p>Quiz load nahi ho paaya.</p>';
+  }
+}
+function closeAdminQuizModal() { document.getElementById('adminQuizModal').classList.remove('open'); }
+function renderAdminQuizEditor() {
+  const body = document.getElementById('adminQuizModalBody');
+  if (!_adminQuizQuestions.length) {
+    body.innerHTML = `<p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Is lesson ka abhi tak koi quiz nahi hai.</p><button class="btn btn-primary btn-block" onclick="adminGenerateQuiz()" type="button"><i data-lucide="sparkles"></i>AI se 20 sawaal banao</button>`;
+    lucide.createIcons(); return;
+  }
+  body.innerHTML = `<button class="btn btn-secondary btn-sm" style="margin-bottom:14px" onclick="adminGenerateQuiz()" type="button"><i data-lucide="refresh-cw"></i>AI se dobara banao</button><div style="max-height:50vh;overflow-y:auto">${_adminQuizQuestions.map((q, i) => `<div style="margin-bottom:14px;padding:10px;background:var(--surface-2);border-radius:10px"><textarea class="field-input" style="min-height:40px;margin-bottom:6px" onchange="_adminQuizQuestions[${i}].question=this.value">${esc(q.question)}</textarea>${q.options.map((opt, oi) => `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><input type="radio" name="admCorrect_${i}" ${oi === q.correctIndex ? 'checked' : ''} onchange="_adminQuizQuestions[${i}].correctIndex=${oi}"><input class="field-input" style="padding:6px 10px;font-size:12.5px" value="${esc(opt)}" onchange="_adminQuizQuestions[${i}].options[${oi}]=this.value"></div>`).join('')}</div>`).join('')}</div><button class="btn btn-primary btn-block" onclick="adminSaveQuiz()" type="button"><i data-lucide="save"></i>Save Changes</button>`;
+  lucide.createIcons();
+}
+async function adminGenerateQuiz() {
+  const body = document.getElementById('adminQuizModalBody');
+  body.innerHTML = '<div class="empty-state" style="padding:20px"><i data-lucide="loader"></i><p>AI 20 sawaal bana raha hai, thoda wait karo (kuch seconds lagenge)...</p></div>';
+  lucide.createIcons();
+  try {
+    const data = await apiFetch('/api/admin/quiz', { method: 'POST', body: JSON.stringify({ lessonId: _adminQuizLessonId }) });
+    _adminQuizQuestions = (data.questions || []).map(q => ({ question: q.question, options: q.options, correctIndex: q.correct_index }));
+    renderAdminQuizEditor();
+    showToast('Quiz ban gaya!', 'check-circle-2');
+  } catch (e) {
+    body.innerHTML = '<p>Quiz generate nahi ho paaya. Dobara try karo.</p>';
+    showToast('Quiz generate fail hua', 'alert-circle');
+  }
+}
+async function adminSaveQuiz() {
+  try {
+    await apiFetch('/api/admin/quiz', { method: 'PUT', body: JSON.stringify({ lessonId: _adminQuizLessonId, questions: _adminQuizQuestions }) });
+    showToast('Quiz save ho gaya', 'check-circle-2');
+  } catch (e) { showToast('Save nahi ho paya', 'alert-circle'); }
+}
+
+
 
 function openLesson(courseId, modIdx, lesIdx) {
   const c = COURSES.find(x => x.id === courseId); if (!c) return;
@@ -2477,7 +2878,7 @@ function openLesson(courseId, modIdx, lesIdx) {
   const notes = getNotes(c.id, lid);
   const lessonBookmarkId = c.id + '_' + lid;
   const bm = isBookmarked(lessonBookmarkId);
-  page.innerHTML = `<div class="reading-progress"><div id="readingProgressBar"></div></div><button class="btn btn-ghost btn-sm" onclick="openCourse('${c.id}')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back to Course</button><div class="lesson-layout"><div><div class="video-container">${lesson.video ? `<iframe src="${lesson.video}" title="${lesson.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<div class="video-fallback"><div class="video-fallback-inner"><i data-lucide="play-circle"></i><p>Video coming soon</p></div></div>`}</div><div class="lesson-panel"><div class="lesson-panel-top"><div class="lesson-panel-label">${module.title}</div><div class="lesson-actions-top"><button class="btn-icon" onclick="toggleBookmark('${lessonBookmarkId}',event)" title="Bookmark" type="button"><i data-lucide="bookmark" ${bm ? 'style="fill:currentColor;color:var(--accent)"' : ''}></i></button><button class="btn-icon" onclick="enterFocusMode()" title="Focus mode (F)" type="button"><i data-lucide="maximize-2"></i></button></div></div><h2>${lesson.title}</h2><div class="lesson-panel-meta"><span><i data-lucide="clock"></i>${lesson.duration}</span><span><i data-lucide="play-circle"></i>Lesson ${idx + 1} of ${all.length}</span><span><i data-lucide="book-open"></i>${c.title}</span></div><p>This lesson is part of <strong>${module.title}</strong>. Watch the video, take notes, and mark it complete when you're done. Press <kbd style="font-family:var(--mono);font-size:11px;padding:2px 6px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px">F</kbd> for focus mode.</p><div class="lesson-actions">${prev ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${prev.mi},${prev.li})" type="button"><i data-lucide="chevron-left"></i>Previous</button>` : ''}<button class="btn ${done ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleComplete('${c.id}','${lid}')" type="button"><i data-lucide="${done ? 'check-circle-2' : 'circle'}"></i>${done ? 'Completed' : 'Mark Complete'}</button>${next ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${next.mi},${next.li})" type="button">Next<i data-lucide="chevron-right"></i></button>` : ''}</div></div><div class="side-panel" style="margin-top:22px"><h3><span><i data-lucide="notebook-pen"></i>Notes for this lesson</span></h3><textarea class="note-input" id="noteInput" placeholder="Write your notes here..."></textarea><div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="addNote('${c.id}','${lid}')" type="button"><i data-lucide="plus"></i>Add Note</button></div><div id="notesList" style="margin-top:18px">${notes.length ? notes.map((n, i) => `<div class="note-item ${n.pinned ? 'pinned' : ''}"><div>${esc(n.text)}</div><div class="note-date"><span>${new Date(n.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span><div class="note-actions"><span class="note-action" onclick="pinNote('${c.id}','${lid}',${i})">${n.pinned ? 'Unpin' : 'Pin'}</span><span class="note-action delete" onclick="deleteNote('${c.id}','${lid}',${i})">Delete</span></div></div></div>`).join('') : '<p class="notes-empty">No notes yet. Add your first note above.</p>'}</div></div></div><aside><div class="side-panel"><h3><span><i data-lucide="list"></i>${module.title}</span></h3>${module.lessons.map((l, li) => { const l2 = modIdx + '-' + li; const d = State.progress[c.id] && State.progress[c.id][l2]; const a = li === lesIdx; return `<div class="lesson-item ${d ? 'done' : ''} ${a ? 'active' : ''}" style="padding:10px 12px" onclick="openLesson('${c.id}',${modIdx},${li})"><div class="lesson-check" style="width:20px;height:20px"><i data-lucide="check" style="width:10px;height:10px"></i></div><div class="lesson-info"><div class="lesson-title" style="font-size:12.5px">${l.title}</div></div></div>`; }).join('')}</div><div class="side-panel"><h3><span><i data-lucide="file-text"></i>Resources</span></h3><p style="font-size:13px;color:var(--text-dim);margin-bottom:14px;line-height:1.6">Downloadable resources for this lesson.</p><button class="btn btn-secondary btn-sm btn-block" onclick="showToast('Resource coming soon','download')" type="button"><i data-lucide="download"></i>Download Notes PDF</button></div></aside></div>`;
+  page.innerHTML = `<div class="reading-progress"><div id="readingProgressBar"></div></div><button class="btn btn-ghost btn-sm" onclick="openCourse('${c.id}')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back to Course</button><div class="lesson-layout"><div><div class="video-container">${lesson.video ? `<iframe src="${lesson.video}" title="${lesson.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<div class="video-fallback"><div class="video-fallback-inner"><i data-lucide="play-circle"></i><p>Video coming soon</p></div></div>`}</div><div class="lesson-panel"><div class="lesson-panel-top"><div class="lesson-panel-label">${module.title}</div><div class="lesson-actions-top"><button class="btn-icon" onclick="toggleBookmark('${lessonBookmarkId}',event)" title="Bookmark" type="button"><i data-lucide="bookmark" ${bm ? 'style="fill:currentColor;color:var(--accent)"' : ''}></i></button><button class="btn-icon" onclick="enterFocusMode()" title="Focus mode (F)" type="button"><i data-lucide="maximize-2"></i></button></div></div><h2>${lesson.title}</h2><div class="lesson-panel-meta"><span><i data-lucide="clock"></i>${lesson.duration}</span><span><i data-lucide="play-circle"></i>Lesson ${idx + 1} of ${all.length}</span><span><i data-lucide="book-open"></i>${c.title}</span></div><p>This lesson is part of <strong>${module.title}</strong>. Watch the video, take notes, and mark it complete when you're done. Press <kbd style="font-family:var(--mono);font-size:11px;padding:2px 6px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px">F</kbd> for focus mode.</p><div class="lesson-actions">${prev ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${prev.mi},${prev.li})" type="button"><i data-lucide="chevron-left"></i>Previous</button>` : ''}<button class="btn ${done ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleComplete('${c.id}','${lid}')" type="button"><i data-lucide="${done ? 'check-circle-2' : 'circle'}"></i>${done ? 'Completed' : 'Mark Complete'}</button>${lesson._dbId ? `<button class="btn btn-secondary btn-sm" onclick="openLessonQuiz('${lesson._dbId}','${jsStr(lesson.title)}')" type="button"><i data-lucide="help-circle"></i>Take Quiz</button>` : ''}${next ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${next.mi},${next.li})" type="button">Next<i data-lucide="chevron-right"></i></button>` : ''}</div></div><div class="side-panel" style="margin-top:22px"><h3><span><i data-lucide="notebook-pen"></i>Notes for this lesson</span></h3><textarea class="note-input" id="noteInput" placeholder="Write your notes here..."></textarea><div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="addNote('${c.id}','${lid}')" type="button"><i data-lucide="plus"></i>Add Note</button></div><div id="notesList" style="margin-top:18px">${notes.length ? notes.map((n, i) => `<div class="note-item ${n.pinned ? 'pinned' : ''}"><div>${esc(n.text)}</div><div class="note-date"><span>${new Date(n.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span><div class="note-actions"><span class="note-action" onclick="pinNote('${c.id}','${lid}',${i})">${n.pinned ? 'Unpin' : 'Pin'}</span><span class="note-action delete" onclick="deleteNote('${c.id}','${lid}',${i})">Delete</span></div></div></div>`).join('') : '<p class="notes-empty">No notes yet. Add your first note above.</p>'}</div></div></div><aside><div class="side-panel"><h3><span><i data-lucide="list"></i>${module.title}</span></h3>${module.lessons.map((l, li) => { const l2 = modIdx + '-' + li; const d = State.progress[c.id] && State.progress[c.id][l2]; const a = li === lesIdx; return `<div class="lesson-item ${d ? 'done' : ''} ${a ? 'active' : ''}" style="padding:10px 12px" onclick="openLesson('${c.id}',${modIdx},${li})"><div class="lesson-check" style="width:20px;height:20px"><i data-lucide="check" style="width:10px;height:10px"></i></div><div class="lesson-info"><div class="lesson-title" style="font-size:12.5px">${l.title}</div></div></div>`; }).join('')}</div><div class="side-panel"><h3><span><i data-lucide="file-text"></i>Resources</span></h3><p style="font-size:13px;color:var(--text-dim);margin-bottom:14px;line-height:1.6">Downloadable resources for this lesson.</p><button class="btn btn-secondary btn-sm btn-block" onclick="showToast('Resource coming soon','download')" type="button"><i data-lucide="download"></i>Download Notes PDF</button></div></aside></div>`;
   lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
   window.removeEventListener('scroll', updateReadingProgress);
   window.addEventListener('scroll', updateReadingProgress, { passive: true });
@@ -2505,6 +2906,7 @@ function toggleComplete(courseId, lid) {
   openLesson(courseId, mi, li);
 }
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+function jsStr(t) { return String(t == null ? '' : t).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/[\r\n]+/g, ' '); }
 function getNotes(c, l) { return State.notes[c + '_' + l] || []; }
 function addNote(c, l) { const inp = document.getElementById('noteInput'); const text = inp.value.trim(); if (!text) { showToast('Write something first', 'alert-circle'); return; } const k = c + '_' + l; if (!State.notes[k]) State.notes[k] = []; State.notes[k].unshift({ text, date: Date.now(), pinned: false }); save(); addXP(5); inp.value = ''; showToast('Note added +5 XP', 'notebook-pen'); refreshNotes(c, l); checkAchievements(); }
 function deleteNote(c, l, i) { const k = c + '_' + l; if (State.notes[k]) { const removed = State.notes[k][i]; State.notes[k].splice(i, 1); save(); showToast('Note deleted', 'trash-2', { label: 'Undo', onClick: () => { State.notes[k].splice(i, 0, removed); save(); refreshNotes(c, l); showToast('Note restored', 'rotate-ccw'); } }); } refreshNotes(c, l); }
