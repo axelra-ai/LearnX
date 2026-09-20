@@ -1827,121 +1827,8 @@ const PROG = [
   { id: 'other-lang', name: 'Other Languages', desc: 'Kotlin, Swift, Ruby, and more.', icon: 'code', grad: 'linear-gradient(135deg,#8b6b94,#d4a574)', count: 5, letter: '{}' }
 ];
 
-const COURSES = [
-  { id: 'ai-ml-path', catId: 'ai-ml', catName: 'AI & ML Engineering', title: 'AI & ML Engineering — Complete Path', desc: 'From Python foundations to building real machine learning models.', instructor: 'LearnX Curated', level: 'Beginner → Advanced', totalLessons: 9, duration: '6h 40m', icon: 'brain-circuit', grad: 'linear-gradient(135deg,#8b6b94,#d4a574)', modules: [
-    { title: 'Module 1 — Python Foundations', lessons: [
-      { title: 'Python for AI — Setup & Basics', duration: '18 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' },
-      { title: 'NumPy Essentials', duration: '22 min', video: 'https://www.youtube.com/embed/QUT1VHiLmmI' },
-      { title: 'Pandas for Data Manipulation', duration: '26 min', video: 'https://www.youtube.com/embed/vmEHCJofslg' }
-    ]},
-    { title: 'Module 2 — Mathematics for ML', lessons: [
-      { title: 'Linear Algebra Refresher', duration: '28 min', video: 'https://www.youtube.com/embed/fNk_zzaMoSs' },
-      { title: 'Probability & Statistics Basics', duration: '24 min', video: 'https://www.youtube.com/embed/xxpc-HPKN28' },
-      { title: 'Calculus for Gradients', duration: '20 min', video: 'https://www.youtube.com/embed/WUvTyaaNkzM' }
-    ]},
-    { title: 'Module 3 — Machine Learning', lessons: [
-      { title: 'What is Machine Learning?', duration: '16 min', video: 'https://www.youtube.com/embed/ukzFI9rgwfU' },
-      { title: 'Supervised Learning — Regression', duration: '30 min', video: 'https://www.youtube.com/embed/PaFPbb66DxQ' },
-      { title: 'Building Your First Model', duration: '34 min', video: 'https://www.youtube.com/embed/7eh4d6sabA0' }
-    ]}
-  ]},
-  { id: 'cloud-fundamentals', catId: 'cloud', catName: 'Cloud Computing', title: 'Cloud Computing Essentials', desc: 'Understand cloud concepts, AWS fundamentals.', instructor: 'LearnX Curated', level: 'Beginner', totalLessons: 6, duration: '3h 50m', icon: 'cloud', grad: 'linear-gradient(135deg,#6b8bb5,#4a6b8a)', modules: [
-    { title: 'Module 1 — Cloud Basics', lessons: [
-      { title: 'What is Cloud Computing?', duration: '18 min', video: 'https://www.youtube.com/embed/M988_fsOSWo' },
-      { title: 'IaaS, PaaS, SaaS Explained', duration: '20 min', video: 'https://www.youtube.com/embed/4h2Z1S6uY_Y' },
-      { title: 'Cloud Providers Overview', duration: '22 min', video: 'https://www.youtube.com/embed/3XFODda6YXo' }
-    ]},
-    { title: 'Module 2 — Hands On', lessons: [
-      { title: 'Your First AWS EC2 Instance', duration: '30 min', video: 'https://www.youtube.com/embed/8T0ybqYzhl8' },
-      { title: 'S3 Storage Basics', duration: '26 min', video: 'https://www.youtube.com/embed/e6wJ5E5aXnY' },
-      { title: 'Deploying a Web App', duration: '34 min', video: 'https://www.youtube.com/embed/Goi6QY6rQTM' }
-    ]}
-  ]},
-  { id: 'cyber-essentials', catId: 'cyber', catName: 'Cyber Security', title: 'Cyber Security Essentials', desc: 'Learn foundations of security, networks, cryptography.', instructor: 'LearnX Curated', level: 'Beginner', totalLessons: 6, duration: '4h 00m', icon: 'shield-check', grad: 'linear-gradient(135deg,#b85450,#8a3a3a)', modules: [
-    { title: 'Module 1 — Foundations', lessons: [
-      { title: 'Introduction to Cyber Security', duration: '20 min', video: 'https://www.youtube.com/embed/inWWhr5tnEA' },
-      { title: 'Network Security Basics', duration: '26 min', video: 'https://www.youtube.com/embed/E03gh1huvW4' },
-      { title: 'Cryptography 101', duration: '28 min', video: 'https://www.youtube.com/embed/NuyzuNBFWxQ' }
-    ]},
-    { title: 'Module 2 — Practical', lessons: [
-      { title: 'Common Attack Types', duration: '24 min', video: 'https://www.youtube.com/embed/3Kq1MIfTWCE' },
-      { title: 'Ethical Hacking Intro', duration: '30 min', video: 'https://www.youtube.com/embed/3Kq1MIfTWCE' },
-      { title: 'Security Best Practices', duration: '22 min', video: 'https://www.youtube.com/embed/9IZz0vV3QVY' }
-    ]}
-  ]},
-  { id: 'web-fullstack', catId: 'web', catName: 'Web Development', title: 'Full-Stack Web Development', desc: 'HTML, CSS, JS, React, Node.js — from zero to deployment.', instructor: 'LearnX Curated', level: 'Beginner → Intermediate', totalLessons: 6, duration: '5h 20m', icon: 'globe', grad: 'linear-gradient(135deg,#d4a574,#6b8bb5)', modules: [
-    { title: 'Module 1 — Frontend Basics', lessons: [
-      { title: 'HTML5 Structure', duration: '22 min', video: 'https://www.youtube.com/embed/UB1O30fR-EE' },
-      { title: 'CSS Layouts & Flexbox', duration: '30 min', video: 'https://www.youtube.com/embed/JJSoEo8JSnc' },
-      { title: 'JavaScript Fundamentals', duration: '36 min', video: 'https://www.youtube.com/embed/W6NZfCO5SIk' }
-    ]},
-    { title: 'Module 2 — Modern Stack', lessons: [
-      { title: 'React Basics', duration: '34 min', video: 'https://www.youtube.com/embed/SqcY0GlETPk' },
-      { title: 'Node.js & Express', duration: '32 min', video: 'https://www.youtube.com/embed/Oe421EPjeBE' },
-      { title: 'Deploying Full-Stack Apps', duration: '28 min', video: 'https://www.youtube.com/embed/l134cBAJCuc' }
-    ]}
-  ]},
-  { id: 'cpp-complete', catId: 'cpp', catName: 'C++', title: 'C++ Complete Course', desc: 'Master C++ — pointers, STL, OOP and competitive patterns.', instructor: 'LearnX Curated', level: 'Beginner → Advanced', totalLessons: 6, duration: '5h 00m', icon: 'braces', grad: 'linear-gradient(135deg,#4a6b8a,#2f4a5e)', letter: 'C+', modules: [
-    { title: 'Module 1 — C++ Basics', lessons: [
-      { title: 'Setup & Hello World', duration: '16 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' },
-      { title: 'Variables & Data Types', duration: '22 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' },
-      { title: 'Control Flow & Loops', duration: '24 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' }
-    ]},
-    { title: 'Module 2 — Intermediate', lessons: [
-      { title: 'Functions & Recursion', duration: '28 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' },
-      { title: 'Pointers & References', duration: '32 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' },
-      { title: 'STL Containers', duration: '36 min', video: 'https://www.youtube.com/embed/vLnPwxZdW4Y' }
-    ]}
-  ]},
-  { id: 'python-mastery', catId: 'python', catName: 'Python', title: 'Python Mastery', desc: 'Learn Python — syntax, OOP, files and real projects.', instructor: 'LearnX Curated', level: 'Beginner → Advanced', totalLessons: 6, duration: '4h 30m', icon: 'file-code', grad: 'linear-gradient(135deg,#4a6b8a,#a8865a)', letter: 'Py', modules: [
-    { title: 'Module 1 — Python Basics', lessons: [
-      { title: 'Setup & First Program', duration: '18 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' },
-      { title: 'Variables, Types, Operators', duration: '24 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' },
-      { title: 'Conditionals & Loops', duration: '22 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' }
-    ]},
-    { title: 'Module 2 — Intermediate', lessons: [
-      { title: 'Functions & Modules', duration: '26 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' },
-      { title: 'OOP in Python', duration: '30 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' },
-      { title: 'File Handling & Projects', duration: '34 min', video: 'https://www.youtube.com/embed/rfscVS0vtbw' }
-    ]}
-  ]},
-  { id: 'math-foundations', catId: 'math', catName: 'Mathematics', title: 'Mathematics Foundations', desc: 'Algebra, trigonometry and calculus — clear examples.', instructor: 'LearnX Curated', level: 'School → College', totalLessons: 6, duration: '3h 40m', icon: 'sigma', grad: 'linear-gradient(135deg,#d4a574,#6b8bb5)', modules: [
-    { title: 'Module 1 — Algebra', lessons: [
-      { title: 'Linear Equations', duration: '20 min', video: 'https://www.youtube.com/embed/k5et1XA8d5c' },
-      { title: 'Quadratic Equations', duration: '24 min', video: 'https://www.youtube.com/embed/IlNAJl36-10' },
-      { title: 'Sequences & Series', duration: '22 min', video: 'https://www.youtube.com/embed/XZJdyPkRe6E' }
-    ]},
-    { title: 'Module 2 — Calculus', lessons: [
-      { title: 'Limits & Continuity', duration: '26 min', video: 'https://www.youtube.com/embed/riXcZT2ICjA' },
-      { title: 'Derivatives Basics', duration: '28 min', video: 'https://www.youtube.com/embed/9vKqVkMQHKk' },
-      { title: 'Integration Intro', duration: '30 min', video: 'https://www.youtube.com/embed/rfG8caE9d40' }
-    ]}
-  ]},
-  { id: 'physics-classic', catId: 'physics', catName: 'Physics', title: 'Classical Physics Path', desc: 'Mechanics, thermodynamics and waves.', instructor: 'LearnX Curated', level: 'School → College', totalLessons: 6, duration: '3h 30m', icon: 'atom', grad: 'linear-gradient(135deg,#8b6b94,#d4a574)', modules: [
-    { title: 'Module 1 — Mechanics', lessons: [
-      { title: 'Motion in 1D', duration: '22 min', video: 'https://www.youtube.com/embed/ZM8ECpBuQYE' },
-      { title: "Newton's Laws", duration: '26 min', video: 'https://www.youtube.com/embed/kKKM8Y-u7ds' },
-      { title: 'Work, Energy, Power', duration: '24 min', video: 'https://www.youtube.com/embed/w4QFJb9a8vo' }
-    ]},
-    { title: 'Module 2 — More Physics', lessons: [
-      { title: 'Thermodynamics Basics', duration: '28 min', video: 'https://www.youtube.com/embed/8N1fgk4M9a8' },
-      { title: 'Waves & Sound', duration: '24 min', video: 'https://www.youtube.com/embed/Qd7k0b6jZKM' },
-      { title: 'Optics Intro', duration: '26 min', video: 'https://www.youtube.com/embed/ZM8ECpBuQYE' }
-    ]}
-  ]},
-  { id: 'chem-essentials', catId: 'chemistry', catName: 'Chemistry', title: 'Chemistry Essentials', desc: 'Atoms, reactions, organic chemistry.', instructor: 'LearnX Curated', level: 'School → College', totalLessons: 6, duration: '3h 20m', icon: 'flask-conical', grad: 'linear-gradient(135deg,#7d8a5f,#6b8bb5)', modules: [
-    { title: 'Module 1 — Foundations', lessons: [
-      { title: 'Atomic Structure', duration: '22 min', video: 'https://www.youtube.com/embed/thnD3Z1LbXk' },
-      { title: 'Periodic Table', duration: '24 min', video: 'https://www.youtube.com/embed/0RRVV4Diomg' },
-      { title: 'Chemical Bonding', duration: '26 min', video: 'https://www.youtube.com/embed/Qqjcw0XaLmw' }
-    ]},
-    { title: 'Module 2 — Reactions & Organic', lessons: [
-      { title: 'Types of Reactions', duration: '22 min', video: 'https://www.youtube.com/embed/6F8YDd4Fw0Y' },
-      { title: 'Acids & Bases', duration: '24 min', video: 'https://www.youtube.com/embed/ANi709MYnWg' },
-      { title: 'Organic Chemistry Intro', duration: '28 min', video: 'https://www.youtube.com/embed/bka20Q9TN6M' }
-    ]}
-  ]}
-];
+const COURSES = [];
+// Purane demo courses hata diye — ab saare courses Admin Panel (Supabase) se aate hain.
 
 /* Gemini-only model config (kept internal, hidden from UI) */
 const MODEL = { name: 'LearnX AI', short: 'LX', provider: 'LearnX', ico: 'var(--grad-gold)' };
@@ -2726,7 +2613,16 @@ function renderAdminManageBox(courseId) {
     <div class="field"><label class="field-label">Lesson Title</label><input class="field-input" id="admLsnTitle_${courseId}" placeholder="e.g. What is Software Engineering?"></div>
     <div class="field"><label class="field-label">Duration</label><input class="field-input" id="admLsnDuration_${courseId}" placeholder="e.g. 20 min"></div>
     <div class="field"><label class="field-label">YouTube Link</label><input class="field-input" id="admLsnVideo_${courseId}" placeholder="Poora YouTube URL paste karo"></div>
-    <button class="btn btn-primary btn-sm" onclick="adminAddLesson('${courseId}')" type="button"><i data-lucide="plus"></i>Add Lesson</button>`;
+    <button class="btn btn-primary btn-sm" onclick="adminAddLesson('${courseId}')" type="button"><i data-lucide="plus"></i>Add Lesson</button>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border)">
+      <button class="btn btn-secondary btn-sm" onclick="adminToggleBulk('${courseId}')" type="button" id="admBulkToggle_${courseId}"><i data-lucide="list-plus"></i>Bulk Add (ek saath kai lessons)</button>
+      <div id="admBulkBox_${courseId}" style="display:none;margin-top:10px">
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Har line ek lesson hai, is format me: <b>Title | Duration | YouTube URL</b></p>
+        <textarea class="field-input" id="admBulkText_${courseId}" style="min-height:120px" placeholder="What is SE? | 20 min | https://youtube.com/watch?v=xxxx
+SDLC Basics | 24 min | https://youtube.com/watch?v=yyyy"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="adminBulkAddLessons('${courseId}')" type="button"><i data-lucide="upload"></i>Sab Add Karo</button>
+      </div>
+    </div>`;
   }
   html += `</div>`;
   box.innerHTML = html;
@@ -2795,6 +2691,33 @@ async function adminAddLesson(courseId) {
     _coursesServerLoaded = false;
     showToast('Lesson add ho gaya', 'check-circle-2');
   } catch (e) { showToast('Lesson add nahi ho paya', 'alert-circle'); }
+}
+function adminToggleBulk(courseId) {
+  const box = document.getElementById('admBulkBox_' + courseId);
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+async function adminBulkAddLessons(courseId) {
+  const textarea = document.getElementById('admBulkText_' + courseId);
+  const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('Pehle kuch lines daalo', 'alert-circle'); return; }
+  const moduleTitle = document.getElementById('admLsnModule_' + courseId).value.trim() || 'Module 1';
+  const levelId = _adminSelectedLevelByCourse[courseId] || null;
+  let ok = 0, fail = 0;
+  for (const line of lines) {
+    const parts = line.split('|').map(p => p.trim());
+    if (parts.length < 3) { fail++; continue; }
+    const [title, duration, videoRaw] = parts;
+    const videoUrl = toYouTubeEmbed(videoRaw);
+    if (!title || !videoUrl) { fail++; continue; }
+    try {
+      await apiFetch('/api/admin/lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration: duration || '20 min', videoUrl }) });
+      ok++;
+    } catch (e) { fail++; }
+  }
+  textarea.value = '';
+  await adminLoadLessons(courseId);
+  _coursesServerLoaded = false;
+  showToast(`${ok} lessons add ho gaye${fail ? ', ' + fail + ' fail hue' : ''}`, ok ? 'check-circle-2' : 'alert-circle');
 }
 async function adminDeleteLesson(courseId, lessonId) {
   if (!confirm('Ye lesson delete karein?')) return;
