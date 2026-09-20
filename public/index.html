@@ -16,7 +16,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // Google Cloud Console se mila OAuth Client ID yahan daalo (README dekho).
-  window.GOOGLE_CLIENT_ID = "1089843129970-emkfn2kma64dunqf6sl9qo31qlu88if7.apps.googleusercontent.com";
+  window.GOOGLE_CLIENT_ID = "1089843129970-emkfn2kma64dunqf6s19qo31q1u88if7.apps.googleusercontent.com";
 </script>
 <style>
 /* ========== RESET ========== */
@@ -1734,7 +1734,6 @@ async function loadServerState() {
     State.chats = data.chats || [];
     if (data.settings) Object.assign(Settings, data.settings);
     save(); saveSettings();
-    applyAdminVisibility();
     return true;
   } catch (e) {
     console.warn('Server se state load nahi hua, local data use ho raha hai.', e);
