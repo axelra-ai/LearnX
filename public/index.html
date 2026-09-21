@@ -1719,7 +1719,7 @@ async function apiFetch(url, opts = {}) {
 async function loadServerState() {
   if (!getToken()) return false;
   try {
-    const data = await apiFetch('/api/state/get');
+    const data = await apiFetch('/api/state');
     State.user = State.user || {};
     State.user.isAdmin = !!data.isAdmin;
     const adminNav = document.getElementById('adminNavSection');
@@ -1746,7 +1746,7 @@ function syncStateToServer() {
   if (!getToken()) return;
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(() => {
-    apiFetch('/api/state/save', {
+    apiFetch('/api/state', {
       method: 'POST',
       body: JSON.stringify({
         progress: State.progress, notes: State.notes, bookmarks: State.bookmarks,
@@ -1949,7 +1949,7 @@ async function doLogin() {
   const btn = document.querySelector('#formLogin .btn-primary');
   if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
   try {
-    const data = await apiFetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password: pass }) });
+    const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'login', email, password: pass }) });
     setToken(data.token);
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
@@ -1987,7 +1987,7 @@ async function doSignup() {
   const btn = document.querySelector('#formSignup .btn-primary');
   if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
   try {
-    const data = await apiFetch('/api/auth/signup', { method: 'POST', body: JSON.stringify({ name, email, password: p1 }) });
+    const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'signup', name, email, password: p1 }) });
     setToken(data.token);
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
@@ -2019,7 +2019,7 @@ function oauthLogin(p) {
 }
 async function handleGoogleCredential(response) {
   try {
-    const data = await apiFetch('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential }) });
+    const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'google', credential: response.credential }) });
     setToken(data.token);
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
@@ -2508,7 +2508,7 @@ async function renderAdmin() {
   page.innerHTML = `<div class="empty-state"><i data-lucide="loader"></i><h3>Loading admin panel...</h3></div>`;
   lucide.createIcons();
   try {
-    const data = await apiFetch('/api/admin/courses');
+    const data = await apiFetch('/api/admin/manage?type=courses');
     _adminCourses = data.courses || [];
     renderAdminUI();
   } catch (e) {
@@ -2553,7 +2553,7 @@ async function adminAddCourse() {
   const levelType = document.getElementById('admCourseLevelType').value;
   if (!title) { showToast('Course title daalo', 'alert-circle'); return; }
   try {
-    await apiFetch('/api/admin/courses', { method: 'POST', body: JSON.stringify({ catId, catName, title, description, levelType }) });
+    await apiFetch('/api/admin/manage?type=courses', { method: 'POST', body: JSON.stringify({ catId, catName, title, description, levelType }) });
     document.getElementById('admCourseTitle').value = '';
     document.getElementById('admCourseDesc').value = '';
     _coursesServerLoaded = false;
@@ -2580,7 +2580,7 @@ async function adminToggleManage(courseId) {
   let levels = [];
   if (course.level_type !== 'none') {
     try {
-      const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+      const data = await apiFetch('/api/admin/manage?type=levels&courseId=' + encodeURIComponent(courseId));
       levels = data.levels || [];
     } catch (e) {}
   }
@@ -2647,8 +2647,8 @@ async function adminAddLevel(courseId) {
   const name = input.value.trim();
   if (!name) return;
   try {
-    await apiFetch('/api/admin/levels', { method: 'POST', body: JSON.stringify({ courseId, name }) });
-    const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+    await apiFetch('/api/admin/manage?type=levels', { method: 'POST', body: JSON.stringify({ courseId, name }) });
+    const data = await apiFetch('/api/admin/manage?type=levels&courseId=' + encodeURIComponent(courseId));
     _adminLevelsCache[courseId] = data.levels || [];
     input.value = '';
     renderAdminManageBox(courseId);
@@ -2659,8 +2659,8 @@ async function adminAddLevel(courseId) {
 async function adminDeleteLevel(courseId, levelId) {
   if (!confirm('Ye level delete karein? Iske saare lessons bhi chale jaayenge.')) return;
   try {
-    await apiFetch('/api/admin/levels?id=' + encodeURIComponent(levelId), { method: 'DELETE' });
-    const data = await apiFetch('/api/admin/levels?courseId=' + encodeURIComponent(courseId));
+    await apiFetch('/api/admin/manage?type=levels&id=' + encodeURIComponent(levelId), { method: 'DELETE' });
+    const data = await apiFetch('/api/admin/manage?type=levels&courseId=' + encodeURIComponent(courseId));
     _adminLevelsCache[courseId] = data.levels || [];
     if (_adminSelectedLevelByCourse[courseId] === levelId) delete _adminSelectedLevelByCourse[courseId];
     renderAdminManageBox(courseId);
@@ -2670,7 +2670,7 @@ async function adminDeleteLevel(courseId, levelId) {
 }
 async function adminLoadLessons(courseId) {
   const levelId = _adminSelectedLevelByCourse[courseId];
-  const url = '/api/admin/lessons?courseId=' + encodeURIComponent(courseId) + (levelId ? '&levelId=' + encodeURIComponent(levelId) : '');
+  const url = '/api/admin/manage?type=lessons&courseId=' + encodeURIComponent(courseId) + (levelId ? '&levelId=' + encodeURIComponent(levelId) : '');
   try {
     const data = await apiFetch(url);
     _adminLessonsCache[courseId] = data.lessons || [];
@@ -2693,7 +2693,7 @@ async function adminAddLesson(courseId) {
   const videoUrl = toYouTubeEmbed(videoRaw);
   const levelId = _adminSelectedLevelByCourse[courseId] || null;
   try {
-    await apiFetch('/api/admin/lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration, videoUrl }) });
+    await apiFetch('/api/admin/manage?type=lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration, videoUrl }) });
     document.getElementById('admLsnTitle_' + courseId).value = '';
     document.getElementById('admLsnVideo_' + courseId).value = '';
     await adminLoadLessons(courseId);
@@ -2758,7 +2758,7 @@ async function adminBulkAddLessons(courseId) {
     if (!videoUrl) { fail++; continue; }
     if (!title) { title = (await fetchYouTubeTitle(videoUrl)) || 'Untitled Lesson'; }
     try {
-      await apiFetch('/api/admin/lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration: duration || '20 min', videoUrl }) });
+      await apiFetch('/api/admin/manage?type=lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration: duration || '20 min', videoUrl }) });
       ok++;
     } catch (e) { fail++; }
   }
@@ -2770,7 +2770,7 @@ async function adminBulkAddLessons(courseId) {
 async function adminDeleteLesson(courseId, lessonId) {
   if (!confirm('Ye lesson delete karein?')) return;
   try {
-    await apiFetch('/api/admin/lessons?id=' + encodeURIComponent(lessonId), { method: 'DELETE' });
+    await apiFetch('/api/admin/manage?type=lessons&id=' + encodeURIComponent(lessonId), { method: 'DELETE' });
     await adminLoadLessons(courseId);
     _coursesServerLoaded = false;
     showToast('Lesson delete ho gaya', 'trash-2');
