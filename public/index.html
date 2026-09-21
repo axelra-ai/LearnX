@@ -2358,7 +2358,7 @@ function openCategory(catId) {
   if (courses.length === 0) { page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="course-hero"><div class="course-hero-inner"><span class="eyebrow"><i data-lucide="${cat ? cat.icon : 'book-open'}"></i>${cat ? cat.name : 'Category'}</span><div class="course-hero-top"><div class="course-hero-icon" style="background:${cat ? cat.grad : 'var(--grad-gold)'}">${cat && cat.letter ? cat.letter : `<i data-lucide="${cat ? cat.icon : 'book-open'}"></i>`}</div><div class="course-hero-info"><h1>${cat ? cat.name : 'Category'}</h1><p>${cat ? cat.desc : ''}</p></div></div></div></div><div class="empty-state"><i data-lucide="construction"></i><h3>Coming soon</h3><p>Courses for this category will be added shortly.</p></div>`; lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' }); return; }
   const totalLessons = courses.reduce((a, c) => a + c.totalLessons, 0);
   page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back to Courses</button><div class="course-hero"><div class="course-hero-inner"><span class="eyebrow"><i data-lucide="${cat ? cat.icon : 'book-open'}"></i>${cat ? cat.name : 'Course'}</span><div class="course-hero-top"><div class="course-hero-icon" style="background:${cat ? cat.grad : 'var(--grad-gold)'}">${cat && cat.letter ? cat.letter : `<i data-lucide="${cat ? cat.icon : 'book-open'}"></i>`}</div><div class="course-hero-info"><h1>${cat ? cat.name : 'Course'}</h1><p>${cat ? cat.desc : ''}</p><div class="course-hero-meta"><span><i data-lucide="layers"></i>${courses.length} course${courses.length > 1 ? 's' : ''}</span><span><i data-lucide="play-circle"></i>${totalLessons} lessons</span></div></div></div></div></div><div class="section-head"><h3><i data-lucide="list"></i> Available Courses</h3></div><div class="category-grid">${courses.map(c => courseCardHTML(c)).join('')}</div>`;
-  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+  lucide.createIcons(); observeReveals(); window.scrollTo({ top: 0, behavior: 'instant' });
 }
 function openCourse(courseId) {
   const c = COURSES.find(x => x.id === courseId); if (!c) return;
@@ -2371,7 +2371,7 @@ function openCourse(courseId) {
   document.getElementById('topbarTitle').textContent = c.title;
   const prog = getProgress(c.id); const saved = isBookmarked(c.id);
   page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="course-hero"><div class="course-hero-inner"><span class="eyebrow"><i data-lucide="${c.icon}"></i>${c.catName}</span><div class="course-hero-top"><div class="course-hero-icon" style="background:${c.grad}">${c.letter ? c.letter : `<i data-lucide="${c.icon}"></i>`}</div><div class="course-hero-info"><h1>${c.title}</h1><p>${c.desc}</p><div class="course-hero-meta"><span><i data-lucide="user"></i>${c.instructor}</span><span><i data-lucide="signal"></i>${c.level}</span><span><i data-lucide="play-circle"></i>${c.totalLessons} lessons</span><span><i data-lucide="clock"></i>${c.duration}</span></div></div></div><div class="progress-wrap"><div class="progress-head"><span class="label">Your progress</span><span class="value">${prog.done}/${prog.total} · ${prog.percent}%</span></div><div class="progress-bar"><div style="width:${prog.percent}%"></div></div></div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="btn btn-primary" onclick="openLesson('${c.id}',0,0)" type="button"><i data-lucide="play"></i>${prog.done > 0 ? 'Resume' : 'Start'} Course</button><button class="btn btn-secondary" onclick="openQuizFor('${c.id}')" type="button"><i data-lucide="help-circle"></i>Take Quiz</button><button class="btn btn-secondary" onclick="toggleBookmark('${c.id}',event)" type="button"><i data-lucide="bookmark"></i>${saved ? 'Saved' : 'Save'}</button></div></div></div><div class="section-head"><h3><i data-lucide="list-tree"></i> Course Content</h3></div><div class="module-list">${c.modules.map((m, mi) => `<div class="module ${mi === 0 ? 'open' : ''}" id="mod-${mi}"><div class="module-head" onclick="toggleModule(${mi})"><div class="module-number">${mi + 1}</div><div class="module-info"><h4>${m.title}</h4><p>${m.lessons.length} lessons</p></div><i data-lucide="chevron-down" class="module-chevron"></i></div><div class="module-body">${m.lessons.map((l, li) => { const lid = c.id + '_' + mi + '-' + li; const done = State.progress[c.id] && State.progress[c.id][mi + '-' + li]; const bm = isBookmarked(lid); return `<div class="lesson-item ${done ? 'done' : ''}" onclick="openLesson('${c.id}',${mi},${li})"><div class="lesson-check"><i data-lucide="check"></i></div><div class="lesson-play"><i data-lucide="play"></i></div><div class="lesson-info"><div class="lesson-title">${l.title}</div><div class="lesson-meta"><span><i data-lucide="clock"></i>${l.duration}</span></div></div><button class="lesson-bookmark ${bm ? 'saved' : ''}" onclick="toggleBookmark('${lid}',event)" type="button"><i data-lucide="bookmark"></i></button></div>`; }).join('')}</div></div>`).join('')}</div>`;
-  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+  lucide.createIcons(); observeReveals(); window.scrollTo({ top: 0, behavior: 'instant' });
 }
 function toggleModule(i) { document.getElementById('mod-' + i).classList.toggle('open'); }
 
@@ -2424,7 +2424,7 @@ function openCourseLevels(courseId) {
   const levels = c.levels || [];
   const label = c.levelType === 'semester' ? 'Semester' : 'Class';
   page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="course-hero"><div class="course-hero-inner"><span class="eyebrow"><i data-lucide="${c.icon}"></i>${c.catName}</span><div class="course-hero-top"><div class="course-hero-icon" style="background:${c.grad}"><i data-lucide="${c.icon}"></i></div><div class="course-hero-info"><h1>${c.title}</h1><p>${c.desc}</p></div></div></div></div><div class="section-head"><h3><i data-lucide="layers"></i> Select ${label}</h3></div>${levels.length === 0 ? `<div class="empty-state"><i data-lucide="construction"></i><h3>Coming soon</h3><p>Is course me abhi tak koi ${label.toLowerCase()} add nahi hui hai. Admin Panel se add karo.</p></div>` : `<div class="category-grid">${levels.map(lv => `<div class="category-card" onclick="openCourseLevelDetail('${c.id}','${lv.id}')"><div class="category-icon" style="background:${c.grad}"><i data-lucide="layers"></i></div><h4>${esc(lv.name)}</h4><p>Tap to view lessons</p></div>`).join('')}</div>`}`;
-  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+  lucide.createIcons(); observeReveals(); window.scrollTo({ top: 0, behavior: 'instant' });
 }
 function openCourseLevelDetail(courseId, levelId) {
   const c = COURSES.find(x => x.id === courseId); if (!c) return;
@@ -2461,7 +2461,7 @@ function renderQuizTake() {
   const page = document.getElementById('page-quizTake');
   const q = _activeQuiz;
   page.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="nav('courses')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button><div class="section-head"><h3><i data-lucide="help-circle"></i> Quiz — ${q.questions.length} Questions</h3></div><div id="quizTakeList">${q.questions.map((qq, i) => `<div class="side-panel" style="margin-bottom:14px"><h3 style="font-size:14.5px">${i + 1}. ${esc(qq.question)}</h3><div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">${qq.options.map((opt, oi) => `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);cursor:pointer"><input type="radio" name="q_${qq.id}" value="${oi}" onchange="_activeQuiz.answers['${qq.id}']=${oi}"><span style="font-size:13.5px">${esc(opt)}</span></label>`).join('')}</div></div>`).join('')}</div><button class="btn btn-primary btn-block" onclick="submitQuizTake()" type="button"><i data-lucide="check-circle-2"></i>Submit Quiz</button>`;
-  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+  lucide.createIcons(); observeReveals(); window.scrollTo({ top: 0, behavior: 'instant' });
 }
 async function submitQuizTake() {
   const q = _activeQuiz;
@@ -2617,10 +2617,19 @@ function renderAdminManageBox(courseId) {
     <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border)">
       <button class="btn btn-secondary btn-sm" onclick="adminToggleBulk('${courseId}')" type="button" id="admBulkToggle_${courseId}"><i data-lucide="list-plus"></i>Bulk Add (ek saath kai lessons)</button>
       <div id="admBulkBox_${courseId}" style="display:none;margin-top:10px">
-        <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Har line ek lesson hai, is format me: <b>Title | Duration | YouTube URL</b></p>
-        <textarea class="field-input" id="admBulkText_${courseId}" style="min-height:120px" placeholder="What is SE? | 20 min | https://youtube.com/watch?v=xxxx
-SDLC Basics | 24 min | https://youtube.com/watch?v=yyyy"></textarea>
+        <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Har line ek lesson hai. Sirf <b>YouTube link paste karo</b> (title khud aa jaayega, YouTube se). Chaho to duration bhi daal do: <b>Duration | Link</b>. Ya poora control chahiye: <b>Title | Duration | Link</b></p>
+        <textarea class="field-input" id="admBulkText_${courseId}" style="min-height:120px" placeholder="https://youtube.com/watch?v=xxxx
+20 min | https://youtube.com/watch?v=yyyy
+Custom Title | 24 min | https://youtube.com/watch?v=zzzz"></textarea>
         <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="adminBulkAddLessons('${courseId}')" type="button"><i data-lucide="upload"></i>Sab Add Karo</button>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="adminTogglePlaylist('${courseId}')" type="button"><i data-lucide="list-video"></i>Poori Playlist Import Karo</button>
+        <div id="admPlaylistBox_${courseId}" style="display:none;margin-top:10px">
+          <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">YouTube playlist ka poora link paste karo — saari videos apne aap lessons ban jaayengi (title + duration sab automatic).</p>
+          <input class="field-input" id="admPlaylistUrl_${courseId}" placeholder="https://youtube.com/playlist?list=xxxxxxxx">
+          <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="adminImportPlaylist('${courseId}')" type="button" id="admPlaylistBtn_${courseId}"><i data-lucide="download"></i>Playlist Import Karo</button>
+        </div>
       </div>
     </div>`;
   }
@@ -2696,6 +2705,41 @@ function adminToggleBulk(courseId) {
   const box = document.getElementById('admBulkBox_' + courseId);
   box.style.display = box.style.display === 'none' ? 'block' : 'none';
 }
+function adminTogglePlaylist(courseId) {
+  const box = document.getElementById('admPlaylistBox_' + courseId);
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+async function adminImportPlaylist(courseId) {
+  const input = document.getElementById('admPlaylistUrl_' + courseId);
+  const playlistUrl = input.value.trim();
+  if (!playlistUrl) { showToast('Playlist ka link daalo', 'alert-circle'); return; }
+  const moduleTitle = document.getElementById('admLsnModule_' + courseId).value.trim() || 'Module 1';
+  const levelId = _adminSelectedLevelByCourse[courseId] || null;
+  const btn = document.getElementById('admPlaylistBtn_' + courseId);
+  btn.disabled = true; btn.textContent = 'Import ho raha hai... thoda wait karo';
+  try {
+    const data = await apiFetch('/api/admin/import-playlist', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, playlistUrl }) });
+    input.value = '';
+    await adminLoadLessons(courseId);
+    _coursesServerLoaded = false;
+    showToast(`${data.added} videos playlist se add ho gaye!`, 'check-circle-2');
+  } catch (e) {
+    showToast(e.data && e.data.error ? e.data.error : 'Playlist import fail hui', 'alert-circle');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i data-lucide="download"></i>Playlist Import Karo'; lucide.createIcons();
+  }
+}
+async function fetchYouTubeTitle(embedUrl) {
+  try {
+    const videoId = (embedUrl.match(/\/embed\/([a-zA-Z0-9_-]+)/) || [])[1];
+    if (!videoId) return null;
+    const watchUrl = 'https://www.youtube.com/watch?v=' + videoId;
+    const res = await fetch('https://www.youtube.com/oembed?url=' + encodeURIComponent(watchUrl) + '&format=json');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.title || null;
+  } catch (e) { return null; }
+}
 async function adminBulkAddLessons(courseId) {
   const textarea = document.getElementById('admBulkText_' + courseId);
   const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
@@ -2704,11 +2748,15 @@ async function adminBulkAddLessons(courseId) {
   const levelId = _adminSelectedLevelByCourse[courseId] || null;
   let ok = 0, fail = 0;
   for (const line of lines) {
-    const parts = line.split('|').map(p => p.trim());
-    if (parts.length < 3) { fail++; continue; }
-    const [title, duration, videoRaw] = parts;
+    const parts = line.split('|').map(p => p.trim()).filter(Boolean);
+    let title, duration, videoRaw;
+    if (parts.length >= 3) { [title, duration, videoRaw] = parts; }
+    else if (parts.length === 2) { [duration, videoRaw] = parts; }
+    else if (parts.length === 1) { [videoRaw] = parts; duration = '20 min'; }
+    else { fail++; continue; }
     const videoUrl = toYouTubeEmbed(videoRaw);
-    if (!title || !videoUrl) { fail++; continue; }
+    if (!videoUrl) { fail++; continue; }
+    if (!title) { title = (await fetchYouTubeTitle(videoUrl)) || 'Untitled Lesson'; }
     try {
       await apiFetch('/api/admin/lessons', { method: 'POST', body: JSON.stringify({ courseId, levelId, moduleTitle, title, duration: duration || '20 min', videoUrl }) });
       ok++;
@@ -2801,7 +2849,7 @@ function openLesson(courseId, modIdx, lesIdx) {
   const lessonBookmarkId = c.id + '_' + lid;
   const bm = isBookmarked(lessonBookmarkId);
   page.innerHTML = `<div class="reading-progress"><div id="readingProgressBar"></div></div><button class="btn btn-ghost btn-sm" onclick="openCourse('${c.id}')" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back to Course</button><div class="lesson-layout"><div><div class="video-container">${lesson.video ? `<iframe src="${lesson.video}" title="${lesson.title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : `<div class="video-fallback"><div class="video-fallback-inner"><i data-lucide="play-circle"></i><p>Video coming soon</p></div></div>`}</div><div class="lesson-panel"><div class="lesson-panel-top"><div class="lesson-panel-label">${module.title}</div><div class="lesson-actions-top"><button class="btn-icon" onclick="toggleBookmark('${lessonBookmarkId}',event)" title="Bookmark" type="button"><i data-lucide="bookmark" ${bm ? 'style="fill:currentColor;color:var(--accent)"' : ''}></i></button><button class="btn-icon" onclick="enterFocusMode()" title="Focus mode (F)" type="button"><i data-lucide="maximize-2"></i></button></div></div><h2>${lesson.title}</h2><div class="lesson-panel-meta"><span><i data-lucide="clock"></i>${lesson.duration}</span><span><i data-lucide="play-circle"></i>Lesson ${idx + 1} of ${all.length}</span><span><i data-lucide="book-open"></i>${c.title}</span></div><p>This lesson is part of <strong>${module.title}</strong>. Watch the video, take notes, and mark it complete when you're done. Press <kbd style="font-family:var(--mono);font-size:11px;padding:2px 6px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px">F</kbd> for focus mode.</p><div class="lesson-actions">${prev ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${prev.mi},${prev.li})" type="button"><i data-lucide="chevron-left"></i>Previous</button>` : ''}<button class="btn ${done ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleComplete('${c.id}','${lid}')" type="button"><i data-lucide="${done ? 'check-circle-2' : 'circle'}"></i>${done ? 'Completed' : 'Mark Complete'}</button>${lesson._dbId ? `<button class="btn btn-secondary btn-sm" onclick="openLessonQuiz('${lesson._dbId}','${jsStr(lesson.title)}')" type="button"><i data-lucide="help-circle"></i>Take Quiz</button>` : ''}${next ? `<button class="btn btn-secondary btn-sm" onclick="openLesson('${c.id}',${next.mi},${next.li})" type="button">Next<i data-lucide="chevron-right"></i></button>` : ''}</div></div><div class="side-panel" style="margin-top:22px"><h3><span><i data-lucide="notebook-pen"></i>Notes for this lesson</span></h3><textarea class="note-input" id="noteInput" placeholder="Write your notes here..."></textarea><div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="addNote('${c.id}','${lid}')" type="button"><i data-lucide="plus"></i>Add Note</button></div><div id="notesList" style="margin-top:18px">${notes.length ? notes.map((n, i) => `<div class="note-item ${n.pinned ? 'pinned' : ''}"><div>${esc(n.text)}</div><div class="note-date"><span>${new Date(n.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span><div class="note-actions"><span class="note-action" onclick="pinNote('${c.id}','${lid}',${i})">${n.pinned ? 'Unpin' : 'Pin'}</span><span class="note-action delete" onclick="deleteNote('${c.id}','${lid}',${i})">Delete</span></div></div></div>`).join('') : '<p class="notes-empty">No notes yet. Add your first note above.</p>'}</div></div></div><aside><div class="side-panel"><h3><span><i data-lucide="list"></i>${module.title}</span></h3>${module.lessons.map((l, li) => { const l2 = modIdx + '-' + li; const d = State.progress[c.id] && State.progress[c.id][l2]; const a = li === lesIdx; return `<div class="lesson-item ${d ? 'done' : ''} ${a ? 'active' : ''}" style="padding:10px 12px" onclick="openLesson('${c.id}',${modIdx},${li})"><div class="lesson-check" style="width:20px;height:20px"><i data-lucide="check" style="width:10px;height:10px"></i></div><div class="lesson-info"><div class="lesson-title" style="font-size:12.5px">${l.title}</div></div></div>`; }).join('')}</div><div class="side-panel"><h3><span><i data-lucide="file-text"></i>Resources</span></h3><p style="font-size:13px;color:var(--text-dim);margin-bottom:14px;line-height:1.6">Downloadable resources for this lesson.</p><button class="btn btn-secondary btn-sm btn-block" onclick="showToast('Resource coming soon','download')" type="button"><i data-lucide="download"></i>Download Notes PDF</button></div></aside></div>`;
-  lucide.createIcons(); window.scrollTo({ top: 0, behavior: 'instant' });
+  lucide.createIcons(); observeReveals(); window.scrollTo({ top: 0, behavior: 'instant' });
   window.removeEventListener('scroll', updateReadingProgress);
   window.addEventListener('scroll', updateReadingProgress, { passive: true });
   updateReadingProgress();
