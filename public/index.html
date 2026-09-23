@@ -2401,7 +2401,14 @@ function renderCourseCategories() {
   view.innerHTML = `<div class="section"><div class="section-head"><h3><i data-lucide="${icon}"></i> ${title}</h3><span class="tag">${cats.length} categories</span></div><div class="category-grid">${cats.map(c => { const isLang = currentTab === 'programming'; return `<div class="category-card reveal" onclick="openCategory('${c.id}')"><div class="category-icon" style="background:${c.grad};${isLang ? "font-family:var(--serif);font-weight:600;font-size:" + (c.letter.length > 2 ? '16px' : '18px') : ''}">${isLang ? c.letter : `<i data-lucide="${c.icon}"></i>`}</div><h4>${c.name}</h4><p>${c.desc}</p><div class="category-meta"><span><b>${c.count}</b> courses</span><span class="category-arrow">Explore <i data-lucide="arrow-right"></i></span></div></div>`; }).join('')}</div></div>`;
   lucide.createIcons(); observeReveals();
 }
-function searchCourses() { const q = document.getElementById('courseSearch').value.toLowerCase().trim(); document.querySelectorAll('#courseCategoryView .category-card').forEach(c => { const t = c.querySelector('h4').textContent.toLowerCase(); const d = c.querySelector('p').textContent.toLowerCase(); c.style.display = (!q || t.includes(q) || d.includes(q)) ? '' : 'none'; }); }
+function searchCourses() {
+  const q = document.getElementById('courseSearch').value.toLowerCase().trim();
+  const view = document.getElementById('courseCategoryView');
+  if (!q) { renderCourseCategories(); return; }
+  const matches = COURSES.filter(c => (c.title || '').toLowerCase().includes(q) || (c.desc || '').toLowerCase().includes(q) || (c.catName || '').toLowerCase().includes(q));
+  view.innerHTML = `<div class="section"><div class="section-head"><h3><i data-lucide="search"></i> Search results for "${q}"</h3><span class="tag">${matches.length} found</span></div>${matches.length ? `<div class="category-grid">${matches.map(c => courseCardHTML(c)).join('')}</div>` : `<div class="empty-state"><i data-lucide="search-x"></i><h3>Koi course nahi mila</h3><p>Kisi aur naam ya keyword se search karke dekho.</p></div>`}</div>`;
+  lucide.createIcons(); observeReveals();
+}
 function openCategory(catId) {
   const courses = COURSES.filter(c => c.catId === catId);
   const cat = [...TECH, ...SCHOOL, ...PROG].find(c => c.id === catId);
