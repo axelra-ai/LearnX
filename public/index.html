@@ -686,6 +686,7 @@ body.focus-mode .focus-exit{display:flex}
 .ai-fullpage .msg.user .msg-bubble pre{background:rgba(0,0,0,.2);color:#0a0a0f;border-color:rgba(0,0,0,.1)}
 .ai-fullpage .msg-actions{display:flex;gap:6px;margin-top:10px;opacity:0;transition:opacity .3s}
 .ai-fullpage .msg:hover .msg-actions{opacity:1}
+@media(max-width:640px){.ai-fullpage .msg-actions{opacity:1}}
 .ai-fullpage .msg-action{padding:5px 10px;border-radius:7px;font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:5px;transition:all .25s;background:var(--surface);border:1px solid var(--border);cursor:pointer}
 .ai-fullpage .msg-action:hover{color:var(--accent);border-color:var(--border-glow);background:var(--surface-2)}
 .ai-fullpage .msg-action svg{width:11px;height:11px}
@@ -828,7 +829,9 @@ body.focus-mode .focus-exit{display:flex}
 .ai-input-actions{display:flex;gap:6px;flex-shrink:0}
 .ai-input-icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);color:var(--text-dim);cursor:pointer;transition:all .2s;flex-shrink:0}
 .ai-input-icon-btn:hover{color:var(--accent);border-color:var(--accent-soft);background:var(--accent-bg)}
+.ai-input-icon-btn.listening{color:#fff;background:var(--danger);border-color:var(--danger);animation:micPulse 1.2s ease-in-out infinite}
 .ai-input-icon-btn svg{width:17px;height:17px}
+@keyframes micPulse{50%{box-shadow:0 0 0 7px rgba(212,128,124,.18)}}
 /* ========== TEAM (added) ========== */
 .team-section{margin-top:44px;padding-top:40px;border-top:1px solid var(--border)}
 .team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:22px}
@@ -1496,6 +1499,7 @@ body.focus-mode .focus-exit{display:flex}
                 <div class="ai-input-actions">
                   <div class="ai-input-icon-btn" title="Upload file" onclick="document.getElementById('aiFileInput').click()"><i data-lucide="paperclip"></i></div>
                   <div class="ai-input-icon-btn" title="Camera" onclick="document.getElementById('aiCameraInput').click()"><i data-lucide="camera"></i></div>
+                  <button class="ai-input-icon-btn" id="aiMicBtn" title="Speak your message" onclick="toggleAiMic()" type="button"><i data-lucide="mic"></i></button>
                 </div>
                 <textarea id="aiInput" rows="1" placeholder="Message LearnX AI..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMsg()}" oninput="autoResize(this)"></textarea>
                 <button class="send-btn" onclick="sendAIMsg()" type="button"><i data-lucide="send"></i></button>
@@ -1659,7 +1663,7 @@ body.focus-mode .focus-exit{display:flex}
   </div>
 
   <!-- FAB -->
-  <div class="fab" onclick="nav('ai')" title="Ask AI">
+  <div class="fab" onclick="openAssistant()" title="Open AI Assistant">
     <div class="fab-tooltip">Ask AI Assistant</div>
     <i data-lucide="sparkles"></i>
   </div>
@@ -3025,7 +3029,7 @@ function renderChatMessages() {
       const init = State.user ? State.user.name[0].toUpperCase() : 'U';
       return `<div class="msg user"><div class="msg-avatar" style="background:var(--grad-gold)">${init}</div><div class="msg-bubble">${esc(m.content)}</div></div>`;
     } else {
-      return `<div class="msg ai"><div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble">${m.content}<div class="msg-actions"><button class="msg-action" onclick="copyMsg(${i})" type="button"><i data-lucide="copy"></i>Copy</button></div></div></div>`;
+      return `<div class="msg ai"><div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble">${m.content}<div class="msg-actions"><button class="msg-action" onclick="copyMsg(${i})" type="button"><i data-lucide="copy"></i>Copy</button><button class="msg-action" onclick="speakAiMessage(${i})" type="button"><i data-lucide="volume-2"></i>Speak</button></div></div></div>`;
     }
   }).join('');
   lucide.createIcons();
@@ -3038,6 +3042,35 @@ function copyMsg(i) {
   navigator.clipboard.writeText(text).then(() => showToast('Copied', 'copy')).catch(() => showToast('Copy failed', 'alert-circle'));
 }
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
+let aiRecognition = null;
+function speakAiMessage(i) {
+  const chat = State.chats.find(c => c.id === State.activeChat);
+  const message = chat && chat.messages[i];
+  if (!message || !('speechSynthesis' in window)) { showToast('Voice playback is not supported here', 'volume-x'); return; }
+  window.speechSynthesis.cancel();
+  const text = message.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+function toggleAiMic() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById('aiMicBtn');
+  if (!Recognition) { showToast('Voice input is not supported in this browser', 'mic-off'); return; }
+  if (aiRecognition) { aiRecognition.stop(); return; }
+  aiRecognition = new Recognition();
+  aiRecognition.lang = navigator.language || 'en-IN';
+  aiRecognition.interimResults = true;
+  aiRecognition.continuous = false;
+  aiRecognition.onstart = () => { if (btn) { btn.classList.add('listening'); btn.innerHTML = '<i data-lucide="mic-off"></i>'; lucide.createIcons(); } };
+  aiRecognition.onresult = event => {
+    const transcript = Array.from(event.results).map(result => result[0].transcript).join('');
+    const input = document.getElementById('aiInput');
+    if (input) { input.value = transcript; autoResize(input); }
+  };
+  aiRecognition.onerror = () => showToast('Mic se awaaz nahi mili, dobara try karo', 'mic-off');
+  aiRecognition.onend = () => { aiRecognition = null; if (btn) { btn.classList.remove('listening'); btn.innerHTML = '<i data-lucide="mic"></i>'; lucide.createIcons(); } };
+  aiRecognition.start();
+}
+function openAssistant() { window.location.href = 'assistant.html'; }
 function handleAiFileSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
