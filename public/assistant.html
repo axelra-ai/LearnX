@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#11151c">
+<title>LearnX AI Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+:root{--bg:#11151c;--panel:#1b222b;--panel-2:#222c36;--line:rgba(255,255,255,.12);--text:#f4f1e9;--muted:#9da6ad;--gold:#e3b877;--teal:#79c7bb;--danger:#d87370}*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 18% 5%,rgba(121,199,187,.17),transparent 34%),radial-gradient(circle at 85% 88%,rgba(227,184,119,.16),transparent 38%),var(--bg)}button,textarea{font:inherit;color:inherit}button{border:0;cursor:pointer}.assistant-shell{width:min(1120px,100%);min-height:100vh;margin:auto;padding:24px 24px 32px;display:flex;flex-direction:column}.top{display:flex;align-items:center;gap:14px}.back{width:42px;height:42px;border-radius:13px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center}.back:hover{border-color:var(--gold);color:var(--gold)}.brand{font-family:'Space Grotesk';font-size:18px;font-weight:600}.status{margin-left:auto;color:var(--teal);font-size:12px;display:flex;align-items:center;gap:7px}.status:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}.hero{display:grid;grid-template-columns:1fr 330px;gap:52px;align-items:center;flex:1;padding:70px 0 48px}.copy h1{font-family:'Space Grotesk';font-size:clamp(2.5rem,7vw,5.4rem);line-height:.98;letter-spacing:-.04em;margin:0 0 20px;max-width:700px}.copy h1 span{color:var(--gold)}.copy p{color:var(--muted);font-size:16px;line-height:1.7;max-width:510px;margin:0}.orb-wrap{display:grid;place-items:center}.orb{width:min(300px,65vw);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#f2d49f 0 5%,#d59e56 18%,#728d88 52%,#2b3840 70%,#1a222a 100%);box-shadow:0 0 0 16px rgba(227,184,119,.06),0 0 70px rgba(121,199,187,.26),inset -28px -25px 50px rgba(0,0,0,.5);animation:float 5s ease-in-out infinite}.orb i{width:70px;height:70px;color:#fff;filter:drop-shadow(0 2px 12px rgba(0,0,0,.3))}.orb.listening{animation:pulse 1.2s ease-in-out infinite;box-shadow:0 0 0 20px rgba(121,199,187,.09),0 0 100px rgba(121,199,187,.5),inset -28px -25px 50px rgba(0,0,0,.5)}@keyframes float{50%{transform:translateY(-10px)}}@keyframes pulse{50%{transform:scale(1.05)}}.panel{background:rgba(27,34,43,.88);border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.27);padding:18px}.transcript{min-height:72px;max-height:180px;overflow:auto;color:var(--text);line-height:1.6;margin-bottom:14px}.transcript.empty{color:var(--muted)}.controls{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:14px}.mic{width:58px;height:58px;border-radius:50%;background:var(--gold);color:#172027;display:grid;place-items:center;box-shadow:0 8px 24px rgba(227,184,119,.26)}.mic:hover{transform:translateY(-2px);background:#f1cb8d}.mic.active{background:var(--danger);color:white}.text-input{flex:1;min-width:0;background:transparent;border:0;outline:0;resize:none;padding:8px;font-size:14px;line-height:1.5}.text-input::placeholder{color:var(--muted)}.send{width:42px;height:42px;border-radius:12px;background:var(--panel-2);display:grid;place-items:center}.send:hover{color:var(--gold)}.hint{font-size:12px;color:var(--muted);margin:13px 2px 0}.error{color:#f0a09c}.footer{text-align:center;color:var(--muted);font-size:12px}.footer a{color:var(--gold);text-decoration:none}@media(max-width:760px){.assistant-shell{padding:18px 16px 24px}.hero{grid-template-columns:1fr;gap:30px;padding:56px 0 28px}.orb-wrap{order:-1}.orb{width:190px}.orb i{width:48px}.copy{text-align:center}.copy p{margin:auto}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<main class="assistant-shell">
+  <header class="top"><button class="back" onclick="goBack()" title="Back to LearnX" type="button"><i data-lucide="arrow-left"></i></button><div class="brand">LearnX <span style="color:var(--gold)">AI</span></div><div class="status">Assistant ready</div></header>
+  <section class="hero">
+    <div class="copy"><h1>Talk to your<br><span>learning partner.</span></h1><p>Ask questions, explore ideas, or get unstuck. Press the microphone and speak naturally, or type a message below.</p></div>
+    <div class="orb-wrap"><div class="orb" id="orb"><i data-lucide="sparkles"></i></div></div>
+  </section>
+  <section class="panel"><div class="transcript empty" id="transcript">Your conversation will appear here.</div><div class="controls"><button class="mic" id="micButton" onclick="toggleListening()" title="Speak to LearnX AI" type="button"><i data-lucide="mic"></i></button><textarea class="text-input" id="messageInput" rows="1" placeholder="Ask LearnX AI anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" oninput="resizeInput(this)"></textarea><button class="send" onclick="sendMessage()" title="Send message" type="button"><i data-lucide="send"></i></button></div><div class="hint" id="hint">Tap the mic to start a voice conversation.</div></section>
+  <footer class="footer">Powered by <a href="index.html">LearnX</a> AI</footer>
+</main>
+<script>
+const token = localStorage.getItem('lx_token');
+let recognition = null;
+let lastReply = '';
+const messages = [];
+const input = document.getElementById('messageInput');
+const transcript = document.getElementById('transcript');
+const micButton = document.getElementById('micButton');
+const orb = document.getElementById('orb');
+const hint = document.getElementById('hint');
+function goBack(){ window.location.href = 'index.html'; }
+function resizeInput(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function showTranscript(text, empty=false){ transcript.innerHTML=empty?text:text; transcript.classList.toggle('empty',empty); }
+function speak(text){ if(!('speechSynthesis' in window)){hint.textContent='Voice playback is not supported in this browser.';return;} speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim())); }
+function toggleListening(){
+  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!Recognition){hint.textContent='Voice input is not supported in this browser.';hint.classList.add('error');return;}
+  if(recognition){recognition.stop();return;}
+  recognition=new Recognition(); recognition.lang=navigator.language||'en-IN'; recognition.interimResults=true; recognition.continuous=false;
+  recognition.onstart=()=>{micButton.classList.add('active');orb.classList.add('listening');hint.textContent='Listening... speak now';};
+  recognition.onresult=e=>{input.value=Array.from(e.results).map(r=>r[0].transcript).join('');resizeInput(input);};
+  recognition.onerror=()=>{hint.textContent='Mic se awaaz nahi mili, dobara try karo';};
+  recognition.onend=()=>{recognition=null;micButton.classList.remove('active');orb.classList.remove('listening');if(input.value.trim())sendMessage();else hint.textContent='Tap the mic to start a voice conversation.';};
+  recognition.start();
+}
+async function sendMessage(){
+  const text=input.value.trim(); if(!text)return;
+  input.value='';resizeInput(input);messages.push({role:'user',content:text});showTranscript('Thinking...');hint.textContent='LearnX AI is preparing a reply...';
+  try{
+    const response=await fetch('/api/assistant',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},token?{'Authorization':'Bearer '+token}:{}),body:JSON.stringify({messages})});
+    const data=await response.json().catch(()=>({})); if(!response.ok)throw new Error(data.error||'AI connection failed');
+    lastReply=data.reply||data.message||data.content||''; if(!lastReply)throw new Error('No reply received');
+    messages.push({role:'assistant',content:lastReply});showTranscript(lastReply);hint.textContent='Reply ready. Tap the mic to continue speaking.';speak(lastReply);
+  }catch(error){messages.pop();showTranscript(error.message||'AI se connect nahi ho paaya',false);hint.classList.add('error');}
+}
+lucide.createIcons();
+</script>
+</body>
+</html>
