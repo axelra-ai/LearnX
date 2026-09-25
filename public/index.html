@@ -3029,7 +3029,7 @@ function renderChatMessages() {
       const init = State.user ? State.user.name[0].toUpperCase() : 'U';
       return `<div class="msg user"><div class="msg-avatar" style="background:var(--grad-gold)">${init}</div><div class="msg-bubble">${esc(m.content)}</div></div>`;
     } else {
-      return `<div class="msg ai"><div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble">${m.content}<div class="msg-actions"><button class="msg-action" onclick="copyMsg(${i})" type="button"><i data-lucide="copy"></i>Copy</button><button class="msg-action" onclick="speakAiMessage(${i})" type="button"><i data-lucide="volume-2"></i>Speak</button></div></div></div>`;
+      return `<div class="msg ai"><div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble">${m.content}<div class="msg-actions"><button class="msg-action" onclick="copyMsg(${i})" type="button"><i data-lucide="copy"></i>Copy</button><button class="msg-action" onclick="speakAiMessage(${i})" type="button"><i data-lucide="volume-2"></i>Speak</button><button class="msg-action" onclick="stopAiSpeech()" type="button"><i data-lucide="square"></i>Stop</button></div></div></div>`;
     }
   }).join('');
   lucide.createIcons();
@@ -3060,7 +3060,12 @@ function speakAiMessage(i) {
   const utterance = new SpeechSynthesisUtterance(text);
   const voice = getNaturalSpeechVoice(text); if (voice) utterance.voice = voice;
   utterance.rate = .94; utterance.pitch = .98; utterance.volume = 1;
+  utterance.onend = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); };
   window.speechSynthesis.speak(utterance);
+}
+function stopAiSpeech() {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
 }
 function toggleAiMic() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
