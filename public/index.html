@@ -3043,13 +3043,24 @@ function copyMsg(i) {
 }
 function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
 let aiRecognition = null;
+function getNaturalSpeechVoice(text) {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const hindi = /[\u0900-\u097F]/.test(text);
+  const preferred = hindi ? ['hi-IN', 'hi-US', 'en-IN'] : ['en-IN', 'en-US', 'en-GB'];
+  return voices.filter(v => preferred.some(lang => v.lang.toLowerCase().startsWith(lang.toLowerCase())))
+    .sort((a, b) => ((/google|microsoft|natural|neural/i.test(b.name) ? 1 : 0) - (/google|microsoft|natural|neural/i.test(a.name) ? 1 : 0)))[0] || voices[0];
+}
 function speakAiMessage(i) {
   const chat = State.chats.find(c => c.id === State.activeChat);
   const message = chat && chat.messages[i];
   if (!message || !('speechSynthesis' in window)) { showToast('Voice playback is not supported here', 'volume-x'); return; }
   window.speechSynthesis.cancel();
   const text = message.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  const utterance = new SpeechSynthesisUtterance(text);
+  const voice = getNaturalSpeechVoice(text); if (voice) utterance.voice = voice;
+  utterance.rate = .94; utterance.pitch = .98; utterance.volume = 1;
+  window.speechSynthesis.speak(utterance);
 }
 function toggleAiMic() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
