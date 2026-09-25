@@ -36,7 +36,24 @@ const hint = document.getElementById('hint');
 function goBack(){ window.location.href = 'index.html'; }
 function resizeInput(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
 function showTranscript(text, empty=false){ transcript.innerHTML=empty?text:text; transcript.classList.toggle('empty',empty); }
-function speak(text){ if(!('speechSynthesis' in window)){hint.textContent='Voice playback is not supported in this browser.';return;} speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim())); }
+function getNaturalVoice(text){
+  const voices=speechSynthesis.getVoices();
+  if(!voices.length)return null;
+  const hindi=/[\u0900-\u097F]/.test(text);
+  const preferred=hindi?['hi-IN','hi-US','en-IN']:['en-IN','en-US','en-GB'];
+  return voices.filter(v=>preferred.some(lang=>v.lang.toLowerCase().startsWith(lang.toLowerCase())))
+    .sort((a,b)=>((/google|microsoft|natural|neural/i.test(b.name)?1:0)-(/google|microsoft|natural|neural/i.test(a.name)?1:0)))[0]||voices[0];
+}
+function speak(text){
+  if(!('speechSynthesis' in window)){hint.textContent='Voice playback is not supported in this browser.';return;}
+  speechSynthesis.cancel();
+  const clean=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  const utterance=new SpeechSynthesisUtterance(clean);
+  const voice=getNaturalVoice(clean); if(voice)utterance.voice=voice;
+  utterance.rate=.94; utterance.pitch=.98; utterance.volume=1;
+  speechSynthesis.speak(utterance);
+}
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
 function toggleListening(){
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Recognition){hint.textContent='Voice input is not supported in this browser.';hint.classList.add('error');return;}
