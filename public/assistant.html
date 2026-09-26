@@ -12,6 +12,20 @@
 <style>
 :root{--bg:#11151c;--panel:#1b222b;--panel-2:#222c36;--line:rgba(255,255,255,.12);--text:#f4f1e9;--muted:#9da6ad;--gold:#e3b877;--teal:#79c7bb;--danger:#d87370}*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 18% 5%,rgba(121,199,187,.17),transparent 34%),radial-gradient(circle at 85% 88%,rgba(227,184,119,.16),transparent 38%),var(--bg)}button,textarea{font:inherit;color:inherit}button{border:0;cursor:pointer}.assistant-shell{width:min(1120px,100%);min-height:100vh;margin:auto;padding:24px 24px 32px;display:flex;flex-direction:column}.top{display:flex;align-items:center;gap:14px}.back{width:42px;height:42px;border-radius:13px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center}.back:hover{border-color:var(--gold);color:var(--gold)}.brand{font-family:'Space Grotesk';font-size:18px;font-weight:600}.status{margin-left:auto;color:var(--teal);font-size:12px;display:flex;align-items:center;gap:7px}.status:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}.hero{display:grid;grid-template-columns:1fr 330px;gap:52px;align-items:center;flex:1;padding:70px 0 48px}.copy h1{font-family:'Space Grotesk';font-size:clamp(2.5rem,7vw,5.4rem);line-height:.98;letter-spacing:-.04em;margin:0 0 20px;max-width:700px}.copy h1 span{color:var(--gold)}.copy p{color:var(--muted);font-size:16px;line-height:1.7;max-width:510px;margin:0}.orb-wrap{display:grid;place-items:center}.orb{width:min(300px,65vw);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#f2d49f 0 5%,#d59e56 18%,#728d88 52%,#2b3840 70%,#1a222a 100%);box-shadow:0 0 0 16px rgba(227,184,119,.06),0 0 70px rgba(121,199,187,.26),inset -28px -25px 50px rgba(0,0,0,.5);animation:float 5s ease-in-out infinite}.orb i{width:70px;height:70px;color:#fff;filter:drop-shadow(0 2px 12px rgba(0,0,0,.3))}.orb.listening{animation:pulse 1.2s ease-in-out infinite;box-shadow:0 0 0 20px rgba(121,199,187,.09),0 0 100px rgba(121,199,187,.5),inset -28px -25px 50px rgba(0,0,0,.5)}@keyframes float{50%{transform:translateY(-10px)}}@keyframes pulse{50%{transform:scale(1.05)}}.panel{background:rgba(27,34,43,.88);border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.27);padding:18px}.transcript{min-height:72px;max-height:180px;overflow:auto;color:var(--text);line-height:1.6;margin-bottom:14px}.transcript.empty{color:var(--muted)}.controls{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:14px}.mic{width:58px;height:58px;border-radius:50%;background:var(--gold);color:#172027;display:grid;place-items:center;box-shadow:0 8px 24px rgba(227,184,119,.26)}.mic:hover{transform:translateY(-2px);background:#f1cb8d}.mic.active{background:var(--danger);color:white}.text-input{flex:1;min-width:0;background:transparent;border:0;outline:0;resize:none;padding:8px;font-size:14px;line-height:1.5}.text-input::placeholder{color:var(--muted)}.send{width:42px;height:42px;border-radius:12px;background:var(--panel-2);display:grid;place-items:center}.send:hover{color:var(--gold)}.hint{font-size:12px;color:var(--muted);margin:13px 2px 0}.error{color:#f0a09c}.footer{text-align:center;color:var(--muted);font-size:12px}.footer a{color:var(--gold);text-decoration:none}@media(max-width:760px){.assistant-shell{padding:18px 16px 24px}.hero{grid-template-columns:1fr;gap:30px;padding:56px 0 28px}.orb-wrap{order:-1}.orb{width:190px}.orb i{width:48px}.copy{text-align:center}.copy p{margin:auto}.panel{padding:14px}}
 </style>
+<style>
+.assistant-shell{min-height:100vh;display:flex;flex-direction:column;padding:0 24px 20px}
+.top{padding:14px 0;flex:0 0 auto}
+.top .brand,.top .status,.copy,.footer,.transcript,.hint{display:none!important}
+.hero{display:grid;grid-template-columns:1fr;place-items:center;flex:1;min-height:0;padding:20px 0}
+.orb-wrap{width:100%;place-items:center}
+.orb{width:min(400px,72vw);transition:box-shadow .2s ease}
+.orb.listening,.orb.speaking{animation:orbVoiceMorph .3s ease-in-out infinite alternate;box-shadow:0 0 0 20px rgba(227,184,119,.09),0 0 100px rgba(121,199,187,.58),inset -22px -18px 38px rgba(0,0,0,.45)}
+@keyframes orbVoiceMorph{from{transform:scaleX(1.18) scaleY(.82)}to{transform:scaleX(.78) scaleY(1.16)}}
+.panel{width:min(760px,100%);align-self:center;margin:0;padding:12px;background:rgba(27,34,43,.82);border:1px solid var(--line);border-radius:18px}
+#messageInput::placeholder{color:transparent}
+.panel.speaking .controls,.panel:has(#micButton.active) .controls{border-color:var(--teal);box-shadow:0 0 0 3px rgba(121,199,187,.12)}
+@media(max-width:640px){.assistant-shell{padding:0 14px calc(12px + env(safe-area-inset-bottom))}.top{padding:10px 0}.orb{width:min(340px,76vw)}.panel{padding:9px}}
+</style>
 </head>
 <body>
 <main class="assistant-shell">
@@ -20,7 +34,7 @@
     <div class="copy"><h1>Talk to your<br><span>learning partner.</span></h1><p>Ask questions, explore ideas, or get unstuck. Press the microphone and speak naturally, or type a message below.</p></div>
     <div class="orb-wrap"><div class="orb" id="orb"><i data-lucide="sparkles"></i></div></div>
   </section>
-  <section class="panel"><div class="transcript empty" id="transcript">Your conversation will appear here.</div><div class="controls"><button class="mic" id="micButton" onclick="toggleListening()" title="Speak to LearnX AI" type="button"><i data-lucide="mic"></i></button><textarea class="text-input" id="messageInput" rows="1" placeholder="Ask LearnX AI anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" oninput="resizeInput(this)"></textarea><button class="send" onclick="sendMessage()" title="Send message" type="button"><i data-lucide="send"></i></button></div><div class="hint" id="hint">Tap the mic to start a voice conversation.</div></section>
+  <section class="panel" id="assistantPanel"><div class="transcript empty" id="transcript">Your conversation will appear here.</div><div class="controls"><button class="mic" id="micButton" onclick="toggleListening()" title="Speak to LearnX AI" type="button"><i data-lucide="mic"></i></button><textarea class="text-input" id="messageInput" rows="1" placeholder="Ask LearnX AI anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" oninput="resizeInput(this)"></textarea><button class="send" onclick="sendMessage()" title="Send message" type="button"><i data-lucide="send"></i></button></div><div class="hint" id="hint">Tap the mic to start a voice conversation.</div></section>
   <footer class="footer">Powered by <a href="index.html">LearnX</a> AI</footer>
 </main>
 <script>
@@ -50,7 +64,10 @@ function speak(text){
   const clean=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
   const utterance=new SpeechSynthesisUtterance(clean);
   const voice=getNaturalVoice(clean); if(voice)utterance.voice=voice;
-  utterance.rate=.94; utterance.pitch=.98; utterance.volume=1;
+  utterance.rate=.95; utterance.pitch=1; utterance.volume=1;
+  utterance.onstart=()=>{orb.classList.add('speaking');document.querySelector('.panel').classList.add('speaking');};
+  const finishSpeaking=()=>{orb.classList.remove('speaking');document.querySelector('.panel').classList.remove('speaking');};
+  utterance.onend=finishSpeaking; utterance.onerror=finishSpeaking;
   speechSynthesis.speak(utterance);
 }
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
