@@ -6,6 +6,8 @@
 import { sql } from '../../lib/db.js';
 import { requireAdmin } from '../../lib/admin.js';
 
+const YOUTUBE_API_REFERER = process.env.YOUTUBE_API_REFERER || 'https://learnxtech.vercel.app/';
+
 function extractPlaylistId(url) {
   const m = String(url || '').match(/[?&]list=([a-zA-Z0-9_-]+)/);
   return m ? m[1] : (/^[a-zA-Z0-9_-]{10,}$/.test(url) ? url : null);
@@ -28,7 +30,7 @@ async function fetchAllPlaylistVideos(playlistId, apiKey) {
   let pageToken = '';
   do {
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}${pageToken ? '&pageToken=' + pageToken : ''}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: { Referer: YOUTUBE_API_REFERER } });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'YouTube API error');
     for (const item of data.items || []) {
@@ -48,7 +50,7 @@ async function fetchDurations(videoIds, apiKey) {
   for (let i = 0; i < videoIds.length; i += 50) {
     const batch = videoIds.slice(i, i + 50);
     const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${batch.join(',')}&key=${apiKey}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: { Referer: YOUTUBE_API_REFERER } });
     const data = await res.json();
     if (!res.ok) continue;
     for (const item of data.items || []) {
@@ -95,6 +97,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ added, total: videos.length });
   } catch (err) {
     console.error('Playlist import error:', err);
+    if (String(err.message || '').toLowerCase().includes('requests from referer')) {
+      return res.status(500).json({
+        error: `YouTube API key referrer restriction mismatch. Google Cloud Console me ${YOUTUBE_API_REFERER} ko allowed website referrer add karo, ya YOUTUBE_API_REFERER ko apne live domain par set karo.`,
+      });
+    }
     return res.status(500).json({ error: err.message || 'Playlist import nahi ho paayi.' });
   }
 }
+
