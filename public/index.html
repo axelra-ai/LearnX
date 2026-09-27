@@ -23,10 +23,10 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{overflow-x:hidden}
 :root{
-  --bg:#0a0a0f;--bg-2:#0f0f16;--bg-3:#15151e;--bg-elev:#1a1a24;
+  --bg:#0b0a0f;--bg-2:#0f0f16;--bg-3:#15151e;--bg-elev:#1a1a24;
   --surface:rgba(255,255,255,.035);--surface-2:rgba(255,255,255,.06);--surface-3:rgba(255,255,255,.09);--surface-solid:#15151e;
   --border:rgba(255,255,255,.08);--border-2:rgba(255,255,255,.14);--border-glow:rgba(212,165,116,.5);
-  --text:#f5f3ef;--text-2:#d8d5cc;--text-dim:#9a96a4;--text-dimmer:#6b6878;--text-muted:#4a4754;
+  --text:#f5f3ef;--text-2:#4b101000;--text-dim:#9a96a4;--text-dimmer:#6b6878;--text-muted:#474754;
   --accent:#d4a574;--accent-hover:#e8c89a;--accent-light:#e8c89a;--accent-lighter:#f5e4c8;
   --accent-soft:rgba(212,165,116,.25);--accent-bg:rgba(212,165,116,.08);
   --success:#8ab88a;--success-bg:rgba(138,184,138,.12);
@@ -39,7 +39,7 @@ html,body{overflow-x:hidden}
   --sh-xs:0 1px 2px rgba(0,0,0,.3);
   --sh-sm:0 2px 6px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
   --sh:0 6px 20px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.3);
-  --sh-md:0 12px 32px rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);
+  --sh-md:0 12px 32px rgba(0, 0, 0, 0.117),0 4px 10px rgba(0,0,0,.35);
   --sh-lg:0 24px 60px rgba(0,0,0,.65),0 8px 20px rgba(0,0,0,.4);
   --sh-xl:0 40px 100px rgba(0,0,0,.75),0 16px 40px rgba(0,0,0,.5);
   --sh-glow:0 0 60px rgba(212,165,116,.25);
@@ -98,7 +98,7 @@ img{max-width:100%;display:block}
 /* ========== BUTTONS ========== */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:var(--r-sm);font-size:14px;font-weight:500;transition:all .25s cubic-bezier(.4,0,.2,1);white-space:nowrap;border:1px solid transparent;cursor:pointer;line-height:1.4;position:relative;overflow:hidden;letter-spacing:.005em}
 .btn:active{transform:scale(.98)}
-.btn-primary{background:var(--grad-gold);background-size:200% 200%;color:#0a0a0f;box-shadow:0 4px 14px rgba(212,165,116,.35),var(--sh-inner);font-weight:600;animation:goldShift 6s ease infinite}
+.btn-primary{background:var(--grad-gold);background-size:200% 200%;color:#40405d;box-shadow:0 4px 14px rgba(212,165,116,.35),var(--sh-inner);font-weight:600;animation:goldShift 6s ease infinite}
 .btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);transform:translateX(-100%);transition:transform .7s}
 .btn-primary:hover::after{transform:translateX(100%)}
 .btn-primary:hover{box-shadow:0 8px 24px rgba(212,165,116,.5),var(--sh-inner);transform:translateY(-2px)}
@@ -152,7 +152,7 @@ img{max-width:100%;display:block}
 .splash-logo-mark::before{content:'';position:absolute;inset:-12px;border-radius:36px;border:1.5px solid rgba(212,165,116,.4);animation:ringExpand 2.2s ease-out infinite}
 .splash-logo-mark::after{content:'';position:absolute;inset:-24px;border-radius:46px;border:1px solid rgba(212,165,116,.2);animation:ringExpand 2.2s .5s ease-out infinite}
 @keyframes ringExpand{0%{transform:scale(.9);opacity:1}100%{transform:scale(1.25);opacity:0}}
-.splash-logo-mark svg{width:50px;height:50px;color:#0a0a0f;stroke-width:2.2}
+.splash-logo-mark svg{width:50px;height:50px;color:#505086;stroke-width:2.2}
 .splash-brand{font-family:var(--serif);font-size:52px;font-weight:500;letter-spacing:-.03em;margin-bottom:14px;opacity:0;animation:fadeUp .8s .3s forwards;line-height:1.1}
 .splash-brand em{font-style:italic;font-weight:400;color:var(--accent-light)}
 .splash-tagline{font-family:var(--serif);font-style:italic;font-size:19px;color:var(--text-dim);letter-spacing:.01em;opacity:0;animation:fadeUp .8s .5s forwards}
@@ -2630,7 +2630,7 @@ async function adminAddCourse() {
 async function adminDeleteCourse(courseId) {
   if (!confirm('Poora course delete karein? Iske saare levels/lessons/quiz bhi chale jaayenge.')) return;
   try {
-    await apiFetch('/api/admin/courses?id=' + encodeURIComponent(courseId), { method: 'DELETE' });
+    await apiFetch('/api/admin/manage?type=courses&id=' + encodeURIComponent(courseId), { method: 'DELETE' });
     _coursesServerLoaded = false;
     renderAdmin();
     showToast('Course delete ho gaya', 'trash-2');
