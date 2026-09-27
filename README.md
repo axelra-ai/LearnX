@@ -79,6 +79,8 @@ already pura kaam karega. Baad me bhi ye step kar sakte ho.)
    | Key | Value |
    |---|---|
    | `GEMINI_API_KEY` | tumhari Gemini API key |
+   | `YOUTUBE_API_KEY` | YouTube Data API v3 key (playlist import ke liye) |
+   | `YOUTUBE_API_REFERER` | optional; site origin, default `https://learnxtech.vercel.app/` |
    | `DATABASE_URL` | Step 2 wala Neon connection string |
    | `JWT_SECRET` | koi bhi lamba random string (neeche kaise banaye) |
    | `GOOGLE_CLIENT_ID` | Step 3 wala Client ID (optional, agar Google login chahiye) |
