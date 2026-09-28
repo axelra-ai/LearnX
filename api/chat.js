@@ -124,22 +124,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user = getUserFromReq(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Pehle login karo, phir AI se baat karo.' });
-  }
-
-  const banRows = await sql`select is_banned from users where id = ${user.uid}`;
-  if (banRows[0] && banRows[0].is_banned) {
-    return res.status(403).json({ error: 'Ye account suspend kiya gaya hai.' });
-  }
-
-  const allowed = await checkRateLimit(user.uid);
-  if (!allowed) {
-    return res.status(429).json({ error: 'Thoda ruk jao — bahut zyada messages bhej diye. Ek minute me dobara try karo.' });
-  }
-
+  let failureStage = 'authentication';
   try {
+    const user = getUserFromReq(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Pehle login karo, phir AI se baat karo.' });
+    }
+
+    failureStage = 'database';
+    const banRows = await sql`select is_banned from users where id = ${user.uid}`;
+    if (banRows[0] && banRows[0].is_banned) {
+      return res.status(403).json({ error: 'Ye account suspend kiya gaya hai.' });
+    }
+
+    const allowed = await checkRateLimit(user.uid);
+    if (!allowed) {
+      return res.status(429).json({ error: 'Thoda ruk jao — bahut zyada messages bhej diye. Ek minute me dobara try karo.' });
+    }
+
+    failureStage = 'Gemini';
     const { messages } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Message missing hai.' });
@@ -193,10 +196,13 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ reply: html });
   } catch (err) {
-    console.error('Gemini chat error:', err);
+    console.error(`Chat ${failureStage} error:`, err);
     const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
+    if (failureStage === 'database') {
+      return res.status(500).json({ error: 'Chat database check failed. Vercel me DATABASE_URL aur users table connection check karo.' });
+    }
     return res.status(500).json({
-      error: `Gemini request failed${status ? ` (HTTP ${status})` : ''}. Check the Vercel function logs and API configuration.`,
+      error: `${failureStage} request failed${status ? ` (HTTP ${status})` : ''}. Check the Vercel function logs and API configuration.`,
     });
   }
 }
