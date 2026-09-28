@@ -177,9 +177,9 @@ export default async function handler(req, res) {
       } catch (err) {
         lastErr = err;
         lastModelName = modelName;
-        const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
-        // 429 = quota/rate-limit khatam, 404 = model available nahi — dono cases me agla model try karo
-        if (status === 429 || status === 404) { continue; }
+        const status = Number(err && (err.status || (err.message && err.message.match(/\[(\d+)/) && err.message.match(/\[(\d+)/)[1])));
+        // Quota, missing model, ya temporary provider outage ho to agla model try karo.
+        if ([404, 429, 500, 502, 503, 504].includes(status)) { continue; }
         throw err; // koi aur (jaise auth) error ho to turant band karo, aage try mat karo
       }
     }
