@@ -32,9 +32,13 @@ const MAX_OUTPUT_TOKENS = 1536;
 // Vercel env vars GEMINI_MODEL, GEMINI_MODEL_2, ... order define karte hain.
 // Agar koi model env var set nahi hai, existing defaults use hote hain.
 const DEFAULT_MODEL_FALLBACK_LIST = [
-  'gemini-3-flash-preview',
+  'gemini-3.8-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
   'gemini-3.1-flash-lite',
   'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-3-flash-preview',
 ];
 function getModelFallbackList() {
   const configured = [];
