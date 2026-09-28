@@ -35,7 +35,6 @@ const DEFAULT_MODEL_FALLBACK_LIST = [
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite',
   'gemini-2.5-flash-lite',
-  'gemini-3.5-flash-lite',
 ];
 function getModelFallbackList() {
   const configured = [];
@@ -44,7 +43,7 @@ function getModelFallbackList() {
     const model = process.env[key] && process.env[key].trim();
     if (model && !configured.includes(model)) configured.push(model);
   }
-  return configured.length ? configured : DEFAULT_MODEL_FALLBACK_LIST;
+  return [...configured, ...DEFAULT_MODEL_FALLBACK_LIST.filter(model => !configured.includes(model))];
 }
 
 // Chhota, dependency-free Markdown → safe HTML converter.
