@@ -156,6 +156,7 @@ export default async function handler(req, res) {
 
     let rawText = null;
     let lastErr = null;
+    let lastModelName = '';
 
     for (const modelName of getModelFallbackList()) {
       try {
@@ -172,6 +173,7 @@ export default async function handler(req, res) {
         break; // is model se jawab mil gaya, aage koi aur try karne ki zaroorat nahi
       } catch (err) {
         lastErr = err;
+        lastModelName = modelName;
         const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
         // 429 = quota/rate-limit khatam, 404 = model available nahi — dono cases me agla model try karo
         if (status === 429 || status === 404) { continue; }
@@ -181,7 +183,10 @@ export default async function handler(req, res) {
 
     if (rawText === null) {
       console.error('Sab models fail ho gaye:', lastErr);
-      return res.status(500).json({ error: 'AI abhi kisi bhi model se jawab nahi de paya. Thodi der baad try karo.' });
+      const status = lastErr && (lastErr.status || (lastErr.message && lastErr.message.match(/\[(\d+)/) && Number(lastErr.message.match(/\[(\d+)/)[1])));
+      return res.status(500).json({
+        error: `Configured Gemini models failed. Last model: ${lastModelName || 'unknown'}${status ? ` (HTTP ${status})` : ''}. Check model IDs, GEMINI_API_KEY access, and Vercel function logs.`,
+      });
     }
 
     const html = mdToHtml(rawText);
@@ -189,6 +194,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply: html });
   } catch (err) {
     console.error('Gemini chat error:', err);
-    return res.status(500).json({ error: 'AI abhi jawab nahi de paya. Dobara try karo.' });
+    const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
+    return res.status(500).json({
+      error: `Gemini request failed${status ? ` (HTTP ${status})` : ''}. Check the Vercel function logs and API configuration.`,
+    });
   }
 }
