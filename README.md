@@ -79,6 +79,9 @@ already pura kaam karega. Baad me bhi ye step kar sakte ho.)
    | Key | Value |
    |---|---|
    | `GEMINI_API_KEY` | tumhari Gemini API key |
+   | `GEMINI_MODEL` | pehla Gemini model, jaise `gemini-2.5-flash` |
+   | `GEMINI_MODEL_2` | pehla model quota/error de to doosra model |
+   | `GEMINI_MODEL_3` | teesra fallback model (optional; aage `_4` se `_10` tak bhi set kar sakte ho) |
    | `YOUTUBE_API_KEY` | YouTube Data API v3 key (playlist import ke liye) |
    | `YOUTUBE_API_REFERER` | optional; site origin, default `https://learnxtech.vercel.app/` |
    | `DATABASE_URL` | Step 2 wala Neon connection string |
@@ -112,6 +115,12 @@ Video dikhega seedha website ke andar embed ho ke — user ko kabhi YouTube
 pe jaana nahi padega.
 
 ## AI identity aur formatting
+
+Gemini model fallback ka order Vercel Environment Variables me `GEMINI_MODEL`,
+`GEMINI_MODEL_2`, `GEMINI_MODEL_3` ... se set hota hai. Model quota/rate limit
+(`429`) ya unavailable (`404`) ho to server agla configured model try karta hai.
+Variables add/change karne ke baad Vercel par redeploy karo. Agar model vars set
+nahi hain, built-in default sequence use hoti hai.
 
 `api/chat.js` me system instruction already set hai ki AI hamesha khud ko
 **"LearnX AI"** bataye (kabhi Gemini/Google ka naam reveal nahi karega),
