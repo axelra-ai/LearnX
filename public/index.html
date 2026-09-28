@@ -3166,7 +3166,7 @@ function sendAIMsg(preset) {
       chat.messages.pop(); save(); renderChatMessages();
       return;
     }
-    showToast('AI se connect nahi ho paaya, dobara try karo', 'wifi-off');
+    showToast(err && err.data && err.data.error ? err.data.error : 'AI se connect nahi ho paaya, dobara try karo', 'wifi-off');
     chat.messages.pop(); save(); renderChatMessages();
   });
 }
