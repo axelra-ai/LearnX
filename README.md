@@ -118,7 +118,9 @@ pe jaana nahi padega.
 
 Gemini model fallback ka order Vercel Environment Variables me `GEMINI_MODEL`,
 `GEMINI_MODEL_2`, `GEMINI_MODEL_3` ... se set hota hai. Model quota/rate limit
-(`429`) ya unavailable (`404`) ho to server agla configured model try karta hai.
+(`429`), unavailable (`404`), ya temporary provider error (`5xx`) ho to server
+agla model try karta hai. Configured models ke baad built-in defaults bhi try
+hote hain; duplicate model names repeat nahi hote.
 Variables add/change karne ke baad Vercel par redeploy karo. Agar model vars set
 nahi hain, built-in default sequence use hoti hai.
 
