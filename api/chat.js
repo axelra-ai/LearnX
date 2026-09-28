@@ -161,6 +161,7 @@ export default async function handler(req, res) {
     let rawText = null;
     let lastErr = null;
     let lastModelName = '';
+    const modelAttempts = [];
 
     for (const modelName of getModelFallbackList()) {
       try {
@@ -179,8 +180,12 @@ export default async function handler(req, res) {
         lastErr = err;
         lastModelName = modelName;
         const status = Number(err && (err.status || (err.message && err.message.match(/\[(\d+)/) && err.message.match(/\[(\d+)/)[1])));
+        modelAttempts.push(`${modelName}: HTTP ${status || 'unknown'}`);
         // Quota, missing model, ya temporary provider outage ho to agla model try karo.
         if ([404, 429, 500, 502, 503, 504].includes(status)) { continue; }
+        err.modelName = modelName;
+        err.modelStatus = status;
+        err.modelAttempts = modelAttempts;
         throw err; // koi aur (jaise auth) error ho to turant band karo, aage try mat karo
       }
     }
@@ -189,7 +194,7 @@ export default async function handler(req, res) {
       console.error('Sab models fail ho gaye:', lastErr);
       const status = lastErr && (lastErr.status || (lastErr.message && lastErr.message.match(/\[(\d+)/) && Number(lastErr.message.match(/\[(\d+)/)[1])));
       return res.status(500).json({
-        error: `Configured Gemini models failed. Last model: ${lastModelName || 'unknown'}${status ? ` (HTTP ${status})` : ''}. Check model IDs, GEMINI_API_KEY access, and Vercel function logs.`,
+        error: `Gemini fallback attempts: ${modelAttempts.join('; ')}. Last model: ${lastModelName || 'unknown'}${status ? ` (HTTP ${status})` : ''}.`,
       });
     }
 
@@ -201,6 +206,11 @@ export default async function handler(req, res) {
     const status = err && (err.status || (err.message && err.message.match(/\[(\d+)/) && Number(err.message.match(/\[(\d+)/)[1])));
     if (failureStage === 'database') {
       return res.status(500).json({ error: 'Chat database check failed. Vercel me DATABASE_URL aur users table connection check karo.' });
+    }
+    if (failureStage === 'Gemini' && err && err.modelAttempts) {
+      return res.status(500).json({
+        error: `Gemini stopped at ${err.modelName || 'unknown model'} (HTTP ${err.modelStatus || status || 'unknown'}). Attempts: ${err.modelAttempts.join('; ')}.`,
+      });
     }
     return res.status(500).json({
       error: `${failureStage} request failed${status ? ` (HTTP ${status})` : ''}. Check the Vercel function logs and API configuration.`,
