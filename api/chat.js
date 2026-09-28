@@ -29,15 +29,25 @@ FORMATTING RULES (bahut important):
 
 const MAX_OUTPUT_TOKENS = 1536;
 
-// Free-tier models me se har ek ki apni daily/per-minute limit hoti hai.
-// Isliye ek se zyada model list kiye hain: pehla try hota hai, agar uski
-// quota khatam ho jaaye (429 error) to khud-ba-khud agla model try hota
-// hai — manually har din file edit karke redeploy karne ki zaroorat nahi.
-const MODEL_FALLBACK_LIST = [
+// Vercel env vars GEMINI_MODEL, GEMINI_MODEL_2, ... order define karte hain.
+// Agar koi model env var set nahi hai, existing defaults use hote hain.
+const DEFAULT_MODEL_FALLBACK_LIST = [
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite',
   'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
 ];
+function getModelFallbackList() {
+  const configured = [];
+  for (let index = 1; index <= 10; index++) {
+    const key = index === 1 ? 'GEMINI_MODEL' : `GEMINI_MODEL_${index}`;
+    const model = process.env[key] && process.env[key].trim();
+    if (model && !configured.includes(model)) configured.push(model);
+  }
+  return configured.length ? configured : DEFAULT_MODEL_FALLBACK_LIST;
+}
 
 // Chhota, dependency-free Markdown → safe HTML converter.
 // (Ek external library "marked" use ki thi pehle, lekin uska naya version
@@ -147,7 +157,7 @@ export default async function handler(req, res) {
     let rawText = null;
     let lastErr = null;
 
-    for (const modelName of MODEL_FALLBACK_LIST) {
+    for (const modelName of getModelFallbackList()) {
       try {
         const model = genAI.getGenerativeModel({
           model: modelName,
