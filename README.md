@@ -79,7 +79,7 @@ already pura kaam karega. Baad me bhi ye step kar sakte ho.)
    | Key | Value |
    |---|---|
    | `GEMINI_API_KEY` | tumhari Gemini API key |
-   | `GEMINI_MODEL` | pehla Gemini model, jaise `gemini-2.5-flash` |
+   | `GEMINI_MODEL` | pehla Gemini model, jaise `gemini-3.8-flash` |
    | `GEMINI_MODEL_2` | pehla model quota/error de to doosra model |
    | `GEMINI_MODEL_3` | teesra fallback model (optional; aage `_4` se `_10` tak bhi set kar sakte ho) |
    | `YOUTUBE_API_KEY` | YouTube Data API v3 key (playlist import ke liye) |
