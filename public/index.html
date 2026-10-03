@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0f">
+<meta name="theme-color" content="#0d0e12">
 <meta name="description" content="LearnX — Learn. Build. Grow.">
 <title>LearnX — Learn. Build. Grow.</title>
 <link rel="manifest" href="/manifest.json">
@@ -1036,6 +1036,49 @@ body.focus-mode .focus-exit{display:flex}
   animation-iteration-count:1!important;
   transition-duration:.01ms!important;
 }
+
+/* ========== DARK THEME: "Obsidian & Gold" + borderless full-size AI chat (added) ========== */
+[data-theme="dark"]{
+  --bg:#0d0e12;--bg-2:#111318;--bg-3:#171a20;--bg-elev:#1b1e25;
+  --surface:rgba(255,255,255,.035);--surface-2:rgba(255,255,255,.06);--surface-3:rgba(255,255,255,.09);--surface-solid:#16181e;
+  --border:rgba(255,255,255,.07);--border-2:rgba(255,255,255,.12);--border-glow:rgba(226,184,128,.45);
+  --text:#ecebe8;--text-dim:#9c9fa8;--text-dimmer:#70737d;--text-muted:#4d505a;
+  --accent:#e2b880;--accent-hover:#efcc9d;--accent-light:#efcc9d;
+  --accent-soft:rgba(226,184,128,.22);--accent-bg:rgba(226,184,128,.08);
+  --grad-gold:linear-gradient(135deg,#e2b880 0%,#f1d3a6 50%,#b98f5a 100%);
+  --sh-md:0 12px 32px rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.3);
+}
+[data-theme="dark"] body::before{
+  background:
+    radial-gradient(ellipse 70% 40% at 15% -5%,rgba(226,184,128,.09),transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 0%,rgba(110,130,190,.07),transparent 60%),
+    radial-gradient(ellipse 70% 40% at 50% 110%,rgba(110,130,190,.06),transparent 60%)}
+[data-theme="dark"] .sidebar{background:#0a0b0f}
+[data-theme="dark"] .topbar{background:rgba(13,14,18,.78)}
+[data-theme="dark"] .mobile-nav{background:rgba(10,11,15,.92)}
+[data-theme="dark"] .quick-card,[data-theme="dark"] .stat-card,[data-theme="dark"] .settings-card{border-color:rgba(255,255,255,.06)}
+[data-theme="dark"] .setting-select option{background:#16181e;color:#ecebe8}
+[data-theme="dark"] .theme-select-btn .theme-dot.dark,[data-theme="dark"] .theme-option-row .theme-dot.dark{background:linear-gradient(135deg,#1b1e25 50%,#0d0e12 50%)}
+
+/* AI chat: full area, no outer box/border */
+[data-theme="dark"] body.on-ai-page .content{padding:0;max-width:none}
+[data-theme="dark"] #page-ai>.page-head{display:none}
+[data-theme="dark"] #page-ai .ai-fullpage{
+  height:calc(100vh - var(--topbar-h));height:calc(100dvh - var(--topbar-h));max-height:none;min-height:0;
+  border:0;border-radius:0;box-shadow:none;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
+[data-theme="dark"] .ai-fullpage-head{background:transparent;border-bottom:0}
+[data-theme="dark"] .ai-fullpage-input-wrap{background:transparent;border-top:0;padding:10px 16px calc(14px + env(safe-area-inset-bottom))}
+[data-theme="dark"] .ai-fullpage-input{background:#1b1e25;border:0;box-shadow:0 8px 28px rgba(0,0,0,.35);border-radius:24px}
+[data-theme="dark"] .ai-fullpage-input:focus-within{border:0;box-shadow:0 8px 28px rgba(0,0,0,.35),0 0 0 3px var(--accent-bg)}
+[data-theme="dark"] .ai-input-icon-btn{background:transparent;border:0}
+[data-theme="dark"] .ai-fullpage .msg.ai .msg-bubble{background:transparent;border:0;padding-left:0;padding-right:0}
+[data-theme="dark"] .ai-fullpage .msg-action{border:0;background:transparent}
+[data-theme="dark"] .ai-history-toggle,[data-theme="dark"] .ai-history-drawer{border-color:transparent}
+@media(max-width:768px){
+  [data-theme="dark"] body.on-ai-page .content{padding:0 0 calc(70px + env(safe-area-inset-bottom))}
+  [data-theme="dark"] #page-ai .ai-fullpage{height:calc(100dvh - var(--topbar-h) - 70px - env(safe-area-inset-bottom));max-height:none}
+  [data-theme="dark"] .ai-fullpage-input-wrap{padding:8px 12px 10px}
+}
 </style>
 </head>
 <body>
@@ -1340,13 +1383,6 @@ body.focus-mode .focus-exit{display:flex}
 
           <div class="section reveal" id="achievementShowcase-wrap">
             <div class="achievement-showcase" id="achievementShowcase"></div>
-          </div>
-
-          <div class="section reveal">
-            <div class="section-head">
-              <h3><i data-lucide="users"></i> What Learners Say</h3>
-            </div>
-            <div class="testimonials-grid" id="testimonialsGrid"></div>
           </div>
 
           <div class="section reveal">
