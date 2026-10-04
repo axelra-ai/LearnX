@@ -3310,7 +3310,7 @@ async function _processAiFile(file) {
     return { name, mime: 'image/jpeg', kind: 'image', data: big.split(',')[1], thumb };
   }
   if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
-    if (file.size > 10 * 1024 * 1024) throw new Error('PDF 10MB se chhota rakho');
+    if (file.size > 2.8 * 1024 * 1024) throw new Error('PDF 2.8MB se chhota rakho');
     const url = await _fileToDataURL(file);
     return { name, mime: 'application/pdf', kind: 'pdf', data: url.split(',')[1], thumb: null };
   }
@@ -3417,7 +3417,7 @@ function sendAIMsg(preset) {
   const chat = State.chats.find(c => c.id === State.activeChat);
   if (!chat) return;
   const hasImg = files.some(f => f.kind === 'image');
-  const shown = text || (hasImg ? 'Is photo ko dekho aur batao.' : 'Is file ko dekho aur batao.');
+  const shown = text || (hasImg ? 'Is photo me jo question/text hai use padho aur step-by-step solve karke samjhao.' : 'Is file ko padho aur samjhao.');
   const um = { role: 'user', content: shown, date: Date.now() };
   if (files.length) {
     um.files = files.map(f => ({ name: f.name, mime: f.mime, kind: f.kind, thumb: f.thumb }));
