@@ -144,7 +144,7 @@ export default async function handler(req, res) {
     }
 
     failureStage = 'Gemini';
-    const { messages } = req.body || {};
+    const { messages, attachments } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Message missing hai.' });
     }
@@ -157,6 +157,13 @@ export default async function handler(req, res) {
       parts: [{ text: stripHtml(m.content) }],
     }));
     const last = messages[messages.length - 1];
+
+    // Photo / PDF attachments (frontend base64 bhejta hai) -> Gemini inlineData parts.
+    const mediaParts = (Array.isArray(attachments) ? attachments : [])
+      .slice(0, 4)
+      .filter((a) => a && typeof a.data === 'string' && a.data.length > 0 &&
+        /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/.test(String(a.mimeType)))
+      .map((a) => ({ inlineData: { mimeType: a.mimeType, data: a.data } }));
 
     let rawText = null;
     let lastErr = null;
@@ -173,7 +180,8 @@ export default async function handler(req, res) {
           history,
           generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 },
         });
-        const result = await chat.sendMessage(stripHtml(last.content));
+        const userText = stripHtml(last.content);
+        const result = await chat.sendMessage(mediaParts.length ? [...mediaParts, { text: userText }] : userText);
         rawText = result.response.text();
         break; // is model se jawab mil gaya, aage koi aur try karne ki zaroorat nahi
       } catch (err) {
