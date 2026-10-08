@@ -1874,7 +1874,15 @@ async function apiFetch(url, opts = {}) {
   const token = getToken();
   const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const res = await fetch(url, Object.assign({}, opts, { headers }));
+  const isGet = !opts.method || String(opts.method).toUpperCase() === 'GET';
+  let res;
+  try { res = await fetch(url, Object.assign({}, opts, { headers })); }
+  catch (netErr) {
+    // kharab/slow network ya Vercel cold start: GET ko ek baar aur try karo (POST ko nahi, double-save se bachne ke liye)
+    if (!isGet) throw netErr;
+    await new Promise(r => setTimeout(r, 800));
+    res = await fetch(url, Object.assign({}, opts, { headers }));
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status, data });
   return data;
@@ -2168,7 +2176,8 @@ async function doLogin() {
       hideAuthBusy();
       showAuthError('loginError', e.data && e.data.error ? e.data.error : 'Login fail hua, dobara try karo');
     } else {
-      // Backend abhi deploy/connect nahi hua — demo mode me chalao, error mat do
+      // Network/server tak pahunch nahi paaye. Live site par sach batao; demo mode sirf local file (file://) par.
+      if (location.protocol !== 'file:') { hideAuthBusy(); showAuthError('loginError', 'Server se connect nahi ho paaya. Internet check karke dobara try karo.'); return; }
       const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       setToken(null);
       State.user = { name, email, joined: new Date().toISOString() };
@@ -2207,7 +2216,8 @@ async function doSignup() {
       hideAuthBusy();
       showAuthError('signupError', e.data && e.data.error ? e.data.error : 'Signup fail hua, dobara try karo');
     } else {
-      // Backend abhi deploy/connect nahi hua — demo mode me chalao, error mat do
+      // Network/server tak pahunch nahi paaye. Live site par sach batao; demo mode sirf local file (file://) par.
+      if (location.protocol !== 'file:') { hideAuthBusy(); showAuthError('signupError', 'Server se connect nahi ho paaya. Internet check karke dobara try karo.'); return; }
       setToken(null);
       State.user = { name, email, joined: new Date().toISOString() };
       DB.set('user', State.user);
@@ -3526,7 +3536,8 @@ function sendAIMsg(preset) {
     if (err && err.name === 'AbortError') { thinking.remove(); return; }
     if (err && err.status === 401) return fail('AI se baat karne ke liye login karo', 'alert-circle');
     if (err && err.status === 429) return fail((err.data && err.data.error) || 'Thoda ruk jao aur dobara try karo', 'clock');
-    fail(err && err.data && err.data.error ? err.data.error : 'AI se connect nahi ho paaya, dobara try karo', 'wifi-off');
+    const code = err && err.status ? ' (' + err.status + ')' : '';
+    fail((err && err.data && err.data.error ? err.data.error : 'AI se connect nahi ho paaya, dobara try karo') + code, 'wifi-off');
   });
 }
 function generateReply(text) {
