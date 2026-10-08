@@ -1125,6 +1125,16 @@ body.focus-mode .focus-exit{display:flex}
 .auth-busy-box{display:flex;flex-direction:column;align-items:center;gap:16px;padding:28px 34px;border-radius:20px;background:var(--surface-solid,#16181e);border:1px solid var(--border-2,rgba(255,255,255,.12));box-shadow:0 20px 60px rgba(0,0,0,.5);color:var(--text,#fff);font-size:14px;font-weight:500;max-width:80vw;text-align:center}
 .auth-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--accent-bg,rgba(255,255,255,.15));border-top-color:var(--accent,#d4a574);animation:authspin .8s linear infinite}
 @keyframes authspin{to{transform:rotate(360deg)}}
+
+/* ===== AI thinking indicator: hamesha dikhe (reduce-motion me bhi) ===== */
+.ai-fullpage .thinking-dots{flex-wrap:wrap}
+.ai-fullpage .thinking-dots i{width:8px;height:8px}
+.ai-fullpage .thinking-label{margin-left:8px;font-size:12.5px;color:var(--text-dimmer);font-style:normal}
+@keyframes thinkingFade{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .ai-fullpage .thinking-dots i{animation-name:thinkingFade!important;animation-duration:1.2s!important;animation-iteration-count:infinite!important}
+}
+[data-reduce-motion="true"] .ai-fullpage .thinking-dots i{animation-name:thinkingFade!important;animation-duration:1.2s!important;animation-iteration-count:infinite!important}
 </style>
 </head>
 <body>
@@ -1894,6 +1904,7 @@ async function loadServerState() {
       const have = new Set(State.chats.map(c => c.id));
       serverChats.forEach(c => { if (!have.has(c.id)) State.chats.push(c); });
     } else { State.chats = serverChats; }
+    if (State.activeChat && !State.chats.some(c => c.id === State.activeChat)) State.activeChat = State.chats[0] ? State.chats[0].id : null;
     if (data.settings) Object.assign(Settings, data.settings);
     try { applyTheme(); } catch (e) {}
     save(); saveSettings();
@@ -3462,9 +3473,10 @@ function sendAIMsg(preset) {
   const text = (preset || inp.value).trim();
   const files = _pendingFiles.slice();
   if (!text && !files.length) return;
-  if (!State.activeChat) newChat();
+  // active chat gayab ho gayi ho (jaise server sync ke baad) to nayi bana lo — pehle yahan chup-chap return ho jata tha
+  if (!State.activeChat || !State.chats.some(c => c.id === State.activeChat)) newChat();
   const chat = State.chats.find(c => c.id === State.activeChat);
-  if (!chat) return;
+  if (!chat) { showToast('Chat nahi ban payi, dobara try karo', 'alert-circle'); return; }
   const hasImg = files.some(f => f.kind === 'image');
   const shown = text || (hasImg ? 'Is photo me jo question/text hai use padho aur step-by-step solve karke samjhao.' : 'Is file ko padho aur samjhao.');
   const um = { role: 'user', content: shown, date: Date.now() };
@@ -3481,9 +3493,10 @@ function sendAIMsg(preset) {
   const body = document.getElementById('aiChatBody');
   const thinking = document.createElement('div');
   thinking.className = 'msg ai'; thinking.id = 'thinkingMsg';
-  thinking.innerHTML = `<div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble"><div class="thinking-dots"><i></i><i></i><i></i></div></div>`;
+  thinking.innerHTML = `<div class="msg-avatar" style="background:${MODEL.ico}">${MODEL.short}</div><div class="msg-bubble"><div class="thinking-dots"><i></i><i></i><i></i><span class="thinking-label">LearnX AI soch raha hai…</span></div></div>`;
   body.appendChild(thinking);
   body.scrollTop = body.scrollHeight;
+  setTimeout(() => { const l = thinking.querySelector('.thinking-label'); if (l && thinking.isConnected) l.textContent = 'Thoda time lag raha hai, bas ek second…'; }, 8000);
 
   const token = getToken();
   const ac = new AbortController(); _inflight[chat.id] = ac;
