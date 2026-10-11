@@ -27,7 +27,30 @@ FORMATTING RULES (bahut important):
 - Jawab concise aur learner-friendly rakho — zyada lamba mat karo jab tak user detail na maange.
 - User jis language/style me baat kare (Hindi, Hinglish, English) usi me reply do.`;
 
-const MAX_OUTPUT_TOKENS = 1536;
+const MAX_OUTPUT_TOKENS = 2048;
+
+// ---- Speed / timeout settings (504 se bachne ke liye) ----
+// vercel.json me maxDuration 60s hai. Hum usse pehle khud band karke saaf JSON error
+// dete hain, taaki Vercel ka 504 page kabhi na aaye.
+const TOTAL_BUDGET_MS = Number(process.env.AI_TOTAL_BUDGET_MS) || 50000;   // poore request ka max time
+const ATTEMPT_TIMEOUT_MS = Number(process.env.AI_ATTEMPT_MS) || 22000;     // ek model ko itna hi time
+const MIN_ATTEMPT_MS = 4000;                                              // isse kam bacha ho to naya model try nahi
+const MAX_HISTORY_MESSAGES = 14;                                          // purani chat ka sirf recent hissa bhejo (tez hota hai)
+const MAX_HISTORY_CHARS = 6000;
+
+// Instance ke zinda rehte tak yaad rakho kaun sa model chal raha hai / band hai,
+// taaki har baar mare hue models (404) pe time barbaad na ho.
+const modelBlockedUntil = new Map(); // modelName -> timestamp
+let lastGoodModel = null;
+function isBlocked(name) { const t = modelBlockedUntil.get(name); return t && t > Date.now(); }
+function blockModel(name, ms) { modelBlockedUntil.set(name, Date.now() + ms); }
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => { const e = new Error(`${label} timeout ${ms}ms`); e.isTimeout = true; reject(e); }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 // Vercel env vars GEMINI_MODEL, GEMINI_MODEL_2, ... order define karte hain.
 // Agar koi model env var set nahi hai, existing defaults use hote hain.
@@ -70,7 +93,23 @@ function inlineFormat(text) {
   return t;
 }
 
-function mdToHtml(raw) {
+function mdToHtml(rawIn) {
+  // Math ($$..$$, \\(..\\), \\[..\\], $..$) ko pehle bachao, warna *, _ aur '-' se formula toot jata hai.
+  const mathStash = [];
+  const stash = (m) => { mathStash.push(escapeHtml(m)); return '\u0002' + (mathStash.length - 1) + '\u0002'; };
+  let raw = String(rawIn || '').replace(/\r\n/g, '\n');
+  const codeStash = [];
+  raw = raw.replace(/```[\s\S]*?```/g, (m) => { codeStash.push(m); return '\u0003' + (codeStash.length - 1) + '\u0003'; });
+  raw = raw.replace(/\$\$[\s\S]+?\$\$/g, stash)
+           .replace(/\\\[[\s\S]+?\\\]/g, stash)
+           .replace(/\\\([\s\S]+?\\\)/g, stash)
+           .replace(/(^|[^\\$\w])\$(?!\s)([^$\n]+?)\$(?![\w$])/g, (m, pre, x) => (/\s$/.test(x) ? m : pre + stash('$' + x + '$')));
+  raw = raw.replace(/\u0003(\d+)\u0003/g, (m, i) => codeStash[+i]);
+  const html0 = mdToHtmlCore(raw);
+  return html0.replace(/\u0002(\d+)\u0002/g, (m, i) => mathStash[+i]);
+}
+
+function mdToHtmlCore(raw) {
   const lines = String(raw || '').replace(/\r\n/g, '\n').split('\n');
   let html = '';
   let inCode = false, codeBuf = [];
@@ -151,11 +190,14 @@ export default async function handler(req, res) {
 
     // Purane messages ko Gemini ke "history" format me convert karo, aur
     // HTML tags strip karo (kyunki hum AI messages ko HTML me store karte hain).
-    const stripHtml = (t) => String(t || '').replace(/<[^>]*>/g, ' ').trim();
-    const history = messages.slice(0, -1).map((m) => ({
+    // Sirf recent messages bhejte hain — lambi chat me bhi jawab jaldi aata hai.
+    const stripHtml = (t) => String(t || '').replace(/<[^>]*>/g, ' ').replace(/[ \t]+/g, ' ').trim();
+    const clip = (t) => (t.length > MAX_HISTORY_CHARS ? t.slice(0, MAX_HISTORY_CHARS) + '…' : t);
+    let history = messages.slice(0, -1).slice(-MAX_HISTORY_MESSAGES).map((m) => ({
       role: m.role === 'assistant' || m.role === 'ai' ? 'model' : 'user',
-      parts: [{ text: stripHtml(m.content) }],
+      parts: [{ text: clip(stripHtml(m.content)) || '.' }],
     }));
+    while (history.length && history[0].role !== 'user') history.shift(); // Gemini history 'user' se hi shuru honi chahiye
     const last = messages[messages.length - 1];
 
     // Photo / PDF attachments (frontend base64 bhejta hai) -> Gemini inlineData parts.
@@ -165,44 +207,84 @@ export default async function handler(req, res) {
         /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/.test(String(a.mimeType)))
       .map((a) => ({ inlineData: { mimeType: a.mimeType, data: a.data } }));
 
+    const userText = stripHtml(last.content);
+    const startedAt = Date.now();
     let rawText = null;
     let lastErr = null;
     let lastModelName = '';
     const modelAttempts = [];
 
-    for (const modelName of getModelFallbackList()) {
+    // Pehle wo model jo pichhli baar chala tha, phir baaki; band models skip.
+    let candidates = getModelFallbackList();
+    if (lastGoodModel && candidates.includes(lastGoodModel)) candidates = [lastGoodModel, ...candidates.filter((m) => m !== lastGoodModel)];
+    let usable = candidates.filter((m) => !isBlocked(m));
+    if (!usable.length) { modelBlockedUntil.clear(); usable = candidates; }
+
+    for (const modelName of usable) {
+      const remaining = TOTAL_BUDGET_MS - (Date.now() - startedAt);
+      if (remaining < MIN_ATTEMPT_MS) { modelAttempts.push('time budget khatam'); break; }
+      const attemptMs = Math.min(ATTEMPT_TIMEOUT_MS, remaining - 1000);
+
+      // 2.5-flash me "thinking" bahut time leta hai — limit laga do (math/heavy sawaalon me bhi kaafi rehta hai).
+      const wantsThinkCap = /^gemini-2\.5-flash(?!-lite)/.test(modelName);
+      const runOnce = async (useThinkCap) => {
+        const model = genAI.getGenerativeModel(
+          { model: modelName, systemInstruction: SYSTEM_INSTRUCTION },
+          { timeout: attemptMs }
+        );
+        const generationConfig = { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 };
+        if (useThinkCap) generationConfig.thinkingConfig = { thinkingBudget: 1024 };
+        const chat = model.startChat({ history, generationConfig });
+        const result = await withTimeout(
+          chat.sendMessage(mediaParts.length ? [...mediaParts, { text: userText }] : userText),
+          attemptMs, modelName
+        );
+        let text = '';
+        try { text = result.response.text(); } catch (e) { text = ''; }
+        return text;
+      };
+
       try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: SYSTEM_INSTRUCTION,
-        });
-        const chat = model.startChat({
-          history,
-          generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 },
-        });
-        const userText = stripHtml(last.content);
-        const result = await chat.sendMessage(mediaParts.length ? [...mediaParts, { text: userText }] : userText);
-        rawText = result.response.text();
+        let text;
+        try { text = await runOnce(wantsThinkCap); }
+        catch (e1) {
+          const st1 = Number(e1 && (e1.status || (e1.message && (e1.message.match(/\[(\d+)/) || [])[1])));
+          if (wantsThinkCap && st1 === 400) text = await runOnce(false); // thinkingConfig support na ho to bina uske
+          else throw e1;
+        }
+        if (!text || !text.trim()) { modelAttempts.push(`${modelName}: empty reply`); lastModelName = modelName; continue; }
+        rawText = text;
+        lastGoodModel = modelName;
         break; // is model se jawab mil gaya, aage koi aur try karne ki zaroorat nahi
       } catch (err) {
         lastErr = err;
         lastModelName = modelName;
-        const status = Number(err && (err.status || (err.message && err.message.match(/\[(\d+)/) && err.message.match(/\[(\d+)/)[1])));
-        modelAttempts.push(`${modelName}: HTTP ${status || 'unknown'}`);
-        // Quota, missing model, ya temporary provider outage ho to agla model try karo.
-        if ([404, 429, 500, 502, 503, 504].includes(status)) { continue; }
+        const status = Number(err && (err.status || (err.message && (err.message.match(/\[(\d+)/) || [])[1])));
+        if (err && err.isTimeout) {
+          modelAttempts.push(`${modelName}: timeout`);
+          continue;
+        }
+        modelAttempts.push(`${modelName}: HTTP ${status || 'network'}`);
+        if (status === 404) blockModel(modelName, 6 * 60 * 60 * 1000);       // model exist hi nahi karta
+        else if (status === 429) blockModel(modelName, 60 * 1000);           // quota — 1 minute ruko
+        else if (status === 503 || status === 500 || status === 502 || status === 504) blockModel(modelName, 20 * 1000);
+        // Quota, missing model, timeout/network ya temporary provider outage ho to agla model try karo.
+        if (!status || [404, 408, 429, 500, 502, 503, 504].includes(status)) { continue; }
         err.modelName = modelName;
         err.modelStatus = status;
         err.modelAttempts = modelAttempts;
-        throw err; // koi aur (jaise auth) error ho to turant band karo, aage try mat karo
+        throw err; // koi aur (jaise auth/400) error ho to turant band karo, aage try mat karo
       }
     }
 
     if (rawText === null) {
-      console.error('Sab models fail ho gaye:', lastErr);
-      const status = lastErr && (lastErr.status || (lastErr.message && lastErr.message.match(/\[(\d+)/) && Number(lastErr.message.match(/\[(\d+)/)[1])));
-      return res.status(500).json({
-        error: `Gemini fallback attempts: ${modelAttempts.join('; ')}. Last model: ${lastModelName || 'unknown'}${status ? ` (HTTP ${status})` : ''}.`,
+      console.error('Sab models fail ho gaye:', modelAttempts.join('; '), lastErr);
+      const timedOut = modelAttempts.some((a) => /timeout|time budget/.test(a));
+      return res.status(timedOut ? 504 : 503).json({
+        error: timedOut
+          ? 'AI ko jawab dene me zyada time lag raha hai. Sawaal thoda chhota karke ya dobara try karo.'
+          : 'AI abhi busy hai. Thodi der baad dobara try karo.',
+        debug: `Attempts: ${modelAttempts.join('; ')}. Last model: ${lastModelName || 'unknown'}.`,
       });
     }
 
