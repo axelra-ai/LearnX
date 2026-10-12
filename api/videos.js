@@ -126,15 +126,19 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'inbox') {
       if (!requireUser(user, res)) return;
       const rows = await sql`
-        select distinct on (thread.other_id) thread.other_id as "channelId", u.name as "channelName",
-          u.avatar_url as "avatarUrl", thread.message, thread.created_at as "createdAt"
-        from (
-          select case when sender_id = ${user.uid} then recipient_id else sender_id end as other_id,
-            message, created_at
-          from video_messages where sender_id = ${user.uid} or recipient_id = ${user.uid}
-        ) thread join users u on u.id = thread.other_id
-        where exists(select 1 from video_follows where user_id = thread.other_id and channel_id = ${user.uid})
-        order by thread.other_id, thread.created_at desc limit 50
+        select conversation.* from (
+          select distinct on (thread.other_id) thread.other_id as "channelId", u.name as "channelName",
+            u.avatar_url as "avatarUrl", thread.sender_id as "senderId", thread.message, thread.created_at as "createdAt"
+          from (
+            select case when sender_id = ${user.uid} then recipient_id else sender_id end as other_id,
+              sender_id, message, created_at
+            from video_messages where sender_id = ${user.uid} or recipient_id = ${user.uid}
+          ) thread join users u on u.id = thread.other_id
+          where exists(select 1 from video_follows where user_id = thread.other_id and channel_id = ${user.uid})
+            or exists(select 1 from video_follows where user_id = ${user.uid} and channel_id = thread.other_id)
+          order by thread.other_id, thread.created_at desc
+        ) conversation
+        order by conversation."createdAt" desc limit 50
       `;
       return res.status(200).json({ conversations: rows });
     }
