@@ -1135,6 +1135,13 @@ body.focus-mode .focus-exit{display:flex}
   .ai-fullpage .thinking-dots i{animation-name:thinkingFade!important;animation-duration:1.2s!important;animation-iteration-count:infinite!important}
 }
 [data-reduce-motion="true"] .ai-fullpage .thinking-dots i{animation-name:thinkingFade!important;animation-duration:1.2s!important;animation-iteration-count:infinite!important}
+
+/* ===== Google Drive sync banner ===== */
+.drive-banner{position:fixed;left:16px;right:16px;bottom:24px;max-width:460px;margin:0 auto;z-index:8400;display:none;flex-direction:column;gap:10px;padding:16px 18px;border-radius:18px;background:var(--surface-solid);border:1px solid var(--border-2);box-shadow:var(--sh-lg);color:var(--text)}
+.drive-banner.show{display:flex}
+.drive-banner b{font-size:14.5px}.drive-banner p{margin:0;font-size:13px;line-height:1.5;color:var(--text-dim)}
+.drive-banner .row{display:flex;gap:10px;justify-content:flex-end}
+@media(max-width:768px){.drive-banner{bottom:88px}}
 </style>
 </head>
 <body>
@@ -1738,6 +1745,13 @@ body.focus-mode .focus-exit{display:flex}
               </div>
               <div class="settings-panel" data-panel="data">
                 <div class="settings-card">
+                  <h3><i data-lucide="cloud"></i> Google Drive Sync</h3>
+                  <p class="sub">Aapka data aapki apni Google Drive me save hota hai, hamare server par nahi.</p>
+                  <div class="setting-row"><div class="setting-info"><b id="driveStatusTitle">Drive sync band hai</b><small id="driveStatusSub">Chats, notes aur progress aapki apni Google Drive me save honge</small></div><div class="setting-control"><button class="btn btn-primary btn-sm" id="driveMainBtn" onclick="driveMainAction()" type="button">Drive connect karo</button></div></div>
+                  <div class="setting-row" id="driveOffRow" style="display:none"><div class="setting-info"><b>Drive sync band karein</b><small>Data Drive me bacha rahega</small></div><div class="setting-control"><button class="btn btn-secondary btn-sm" onclick="driveDisconnect()" type="button">Band karo</button></div></div>
+                  <div class="setting-row"><div class="setting-info"><b>Backup file se wapas laao</b><small>Purani backup JSON file chuno</small></div><div class="setting-control"><button class="btn btn-secondary btn-sm" onclick="document.getElementById('restoreInput').click()" type="button"><i data-lucide="upload"></i>Restore</button><input type="file" id="restoreInput" accept="application/json,.json" style="display:none" onchange="restoreFromFile(event)"></div></div>
+                </div>
+                <div class="settings-card">
                   <h3><i data-lucide="database"></i> Data &amp; Storage</h3>
                   <p class="sub">Manage your data on this device.</p>
                   <div class="setting-row"><div class="setting-info"><b>Export data</b><small>Download everything as JSON</small></div><div class="setting-control"><button class="btn btn-secondary btn-sm" onclick="exportData()" type="button"><i data-lucide="download"></i>Export</button></div></div>
@@ -1899,6 +1913,12 @@ async function loadServerState() {
     State.user.isAdmin = !!data.isAdmin;
     const adminNav = document.getElementById('adminNavSection');
     if (adminNav) adminNav.style.display = State.user.isAdmin ? '' : 'none';
+    if (Settings.driveSync || (data.settings && data.settings.driveSync)) {
+      // Is user ka data uski Drive me hai — server ka (khaali) data local par mat likho
+      Settings.driveSync = true; saveSettings();
+      try { driveAfterLogin(); } catch (e) {}
+      return true;
+    }
     State.progress = data.progress || {};
     State.notes = data.notes || {};
     State.bookmarks = data.bookmarks || [];
@@ -1916,6 +1936,7 @@ async function loadServerState() {
     if (data.settings) Object.assign(Settings, data.settings);
     try { applyTheme(); } catch (e) {}
     save(); saveSettings();
+    try { driveAfterLogin(); } catch (e) {}
     return true;
   } catch (e) {
     console.warn('Server se state load nahi hua, local data use ho raha hai.', e);
@@ -1925,6 +1946,8 @@ async function loadServerState() {
 
 let _syncTimer = null, _syncDirty = false, _localVer = 0;
 function _syncBody() {
+  // Drive sync on ho to server par sirf ek chhota flag + xp jaata hai, baaki sab user ki Drive me
+  if (Settings.driveSync) return JSON.stringify({ driveSync: true, xp: State.xp });
   return JSON.stringify({
     progress: State.progress, notes: State.notes, bookmarks: State.bookmarks,
     flashcards: State.flashcards, quizScores: State.quizScores, xp: State.xp,
@@ -1935,10 +1958,15 @@ function _syncBody() {
 function flushSync(keepalive) {
   if (!getToken()) return Promise.resolve();
   clearTimeout(_syncTimer); _syncTimer = null;
+  const drive = !!Settings.driveSync;
   return apiFetch('/api/state', { method: 'POST', body: _syncBody(), keepalive: !!keepalive })
-    .then(() => { _syncDirty = false; });
+    .then(() => { _syncDirty = false; if (drive) { Drive.lastXp = State.xp; Drive.serverPending = false; } });
 }
 function syncStateToServer(now) {
+  if (Settings.driveSync) {
+    driveSchedule();
+    if (!getToken() || (State.xp === Drive.lastXp && !Drive.serverPending)) return;
+  }
   if (!getToken()) return;
   _syncDirty = true;
   clearTimeout(_syncTimer);
@@ -1961,7 +1989,8 @@ const Settings = {
   focusOutline: DB.get('focusOutline', false), publicProfile: DB.get('publicProfile', true),
   showProgress: DB.get('showProgress', false), analytics: DB.get('analytics', true),
   miniSidebar: DB.get('miniSidebar', false),
-  palette: DB.get('palette', 'gold')
+  palette: DB.get('palette', 'gold'),
+  driveSync: DB.get('driveSync', false)
 };
 function saveSettings() { Object.keys(Settings).forEach(k => DB.set(k, Settings[k])); }
 
@@ -1977,10 +2006,285 @@ const State = {
   weeklyLessons: DB.get('weeklyLessons', { week: null, count: 0 }),
   _profileTab: 'progress'
 };
+const Drive = { token: null, exp: 0, fileId: DB.get('driveFileId', null), tc: null, busy: false, again: false, dirty: false, timer: null,
+  lastSync: DB.get('driveLast', null), err: '', applying: false, serverPending: false, lastXp: DB.get('xp', 0), bannerShown: false, bannerMode: 'offer', _res: null };
 function save() {
   ['progress','notes','chats','deletedChats','activeChat','bookmarks','flashcards','quizScores','xp','streak','recent','lastLesson','weeklyLessons'].forEach(k => DB.set(k, State[k]));
   _localVer++;
+  if (!Drive.applying) DB.set('localMod', Date.now());
   syncStateToServer();
+}
+
+
+/* ============================================================
+   GOOGLE DRIVE SYNC
+   User ka data uski apni Google Drive ke chhupe "appDataFolder" me
+   (learnx-data.json) rehta hai. Hamare server par sirf login ki jaankari
+   (aur xp ka ek number) rehti hai. Data pehle phone me save hota hai,
+   phir Drive me. ============================================================ */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE = 'learnx-data.json';
+const DRIVE_KEYS = ['progress','notes','bookmarks','flashcards','quizScores','xp','streak','chats','deletedChats','recent','lastLesson','weeklyLessons'];
+
+function driveTokenOk() { return !!(Drive.token && Date.now() < Drive.exp); }
+function _isObj(x) { return x && typeof x === 'object' && !Array.isArray(x); }
+function _chatTs(c) { let t = Number(c && c.date) || 0; ((c && c.messages) || []).forEach(m => { if ((m.date || 0) > t) t = m.date; }); return t; }
+
+function driveSnapshot() {
+  const data = {};
+  DRIVE_KEYS.forEach(k => { data[k] = State[k]; });
+  const st = {}; Object.keys(Settings).forEach(k => { if (k !== 'driveSync') st[k] = Settings[k]; });
+  data.settings = st;
+  return { v: 1, mod: DB.get('localMod', 0), data };
+}
+function _mergeVal(a, b, pref) {
+  if (a === undefined || a === null) return b;
+  if (b === undefined || b === null) return a;
+  if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
+  if (typeof a === 'boolean' && typeof b === 'boolean') return a || b;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const seen = new Set(), out = [];
+    a.concat(b).forEach(x => { const k = JSON.stringify(x); if (!seen.has(k)) { seen.add(k); out.push(x); } });
+    return out;
+  }
+  if (_isObj(a) && _isObj(b)) {
+    const o = {};
+    new Set(Object.keys(a).concat(Object.keys(b))).forEach(k => { o[k] = _mergeVal(a[k], b[k], pref); });
+    return o;
+  }
+  return pref === 'a' ? a : b;
+}
+// local (a) aur Drive (b) ke data ko jodta hai — kuchh bhi khoye bina
+function driveMerge(a, b) {
+  const pref = (a.mod || 0) >= (b.mod || 0) ? 'a' : 'b';
+  const A = a.data || {}, B = b.data || {};
+  const out = {};
+  DRIVE_KEYS.forEach(k => {
+    if (k === 'chats' || k === 'deletedChats') return;
+    out[k] = _mergeVal(A[k], B[k], pref);
+  });
+  // streak ki date: jo naya ho wahi rakho
+  if (A.streak && B.streak && out.streak) { out.streak.lastDate = String(A.streak.lastDate || '') >= String(B.streak.lastDate || '') ? A.streak.lastDate : B.streak.lastDate; }
+  // delete ki hui chats wapas na aayein
+  const tomb = Object.assign({}, B.deletedChats || {}, A.deletedChats || {});
+  Object.keys(B.deletedChats || {}).forEach(k => { if ((A.deletedChats || {})[k]) tomb[k] = Math.max(A.deletedChats[k], B.deletedChats[k]); });
+  const keys = Object.keys(tomb);
+  if (keys.length > 300) keys.sort((x, y) => tomb[x] - tomb[y]).slice(0, keys.length - 300).forEach(k => delete tomb[k]);
+  out.deletedChats = tomb;
+  const m = new Map();
+  (A.chats || []).concat(B.chats || []).forEach(c => {
+    if (!c || !c.id || tomb[c.id]) return;
+    const o = m.get(c.id);
+    if (!o || _chatTs(c) > _chatTs(o) || (_chatTs(c) === _chatTs(o) && (c.messages || []).length > (o.messages || []).length)) m.set(c.id, c);
+  });
+  out.chats = Array.from(m.values()).sort((x, y) => _chatTs(y) - _chatTs(x));
+  out.settings = pref === 'a' ? (A.settings || B.settings || {}) : (B.settings || A.settings || {});
+  return { v: 1, mod: Math.max(a.mod || 0, b.mod || 0), data: out };
+}
+function driveApply(merged) {
+  Drive.applying = true;
+  try {
+    const d = merged.data || {};
+    DRIVE_KEYS.forEach(k => { if (d[k] !== undefined && d[k] !== null && k !== 'deletedChats') State[k] = d[k]; });
+    State.deletedChats = d.deletedChats || {};
+    if (State.activeChat && !State.chats.some(c => c.id === State.activeChat)) State.activeChat = State.chats[0] ? State.chats[0].id : null;
+    if (d.settings) Object.keys(d.settings).forEach(k => { if (k !== 'driveSync') Settings[k] = d.settings[k]; });
+    DB.set('localMod', merged.mod || Date.now());
+    save(); saveSettings();
+    try { applyTheme(); } catch (e) {}
+    try { applyAllSettings(); } catch (e) {}
+    try { renderAll(); } catch (e) {}
+  } finally { Drive.applying = false; }
+}
+
+/* ---- Google token (sirf drive.appdata permission) ---- */
+function driveRequestToken() {
+  return new Promise((resolve) => {
+    if (!(window.google && google.accounts && google.accounts.oauth2)) { Drive.err = 'Google load nahi hua, thodi der baad try karo'; resolve(null); return; }
+    if (!Drive.tc) {
+      Drive.tc = google.accounts.oauth2.initTokenClient({
+        client_id: window.GOOGLE_CLIENT_ID, scope: DRIVE_SCOPE,
+        callback: (r) => {
+          if (r && r.access_token) { Drive.token = r.access_token; Drive.exp = Date.now() + ((Number(r.expires_in) || 3600) - 90) * 1000; Drive.err = ''; if (Drive._res) Drive._res(Drive.token); }
+          else { if (Drive._res) Drive._res(null); }
+        },
+        error_callback: () => { if (Drive._res) Drive._res(null); }
+      });
+    }
+    Drive._res = resolve;
+    try { Drive.tc.requestAccessToken({ prompt: '', hint: (State.user && State.user.email) || undefined }); }
+    catch (e) { resolve(null); }
+  });
+}
+async function driveFetch(url, opts) {
+  if (!driveTokenOk()) throw Object.assign(new Error('no token'), { code: 'notoken' });
+  const o = Object.assign({}, opts || {}); o.headers = Object.assign({ Authorization: 'Bearer ' + Drive.token }, o.headers || {});
+  const r = await fetch(url, o);
+  if (r.status === 401) { Drive.token = null; throw Object.assign(new Error('token expired'), { code: 'notoken' }); }
+  if (!r.ok) {
+    let m = ''; try { const j = await r.json(); m = (j.error && (j.error.message || j.error.errors && j.error.errors[0].reason)) || ''; } catch (e) {}
+    throw Object.assign(new Error(m || ('Drive error ' + r.status)), { status: r.status, quota: /quota|storage/i.test(m) });
+  }
+  return r;
+}
+async function driveFind() {
+  const r = await driveFetch('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=10&orderBy=modifiedTime%20desc&fields=files(id,name)&q=' + encodeURIComponent("name='" + DRIVE_FILE + "'"));
+  const j = await r.json(); return j.files && j.files[0] ? j.files[0].id : null;
+}
+async function driveRead(id) { const r = await driveFetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media'); return await r.json(); }
+async function driveWrite(id, content) {
+  if (id) {
+    const r = await driveFetch('https://www.googleapis.com/upload/drive/v3/files/' + id + '?uploadType=media&fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: content });
+    return (await r.json()).id || id;
+  }
+  const b = 'lxb' + Date.now();
+  const body = '--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify({ name: DRIVE_FILE, parents: ['appDataFolder'], mimeType: 'application/json' }) +
+    '\r\n--' + b + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + b + '--';
+  const r = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body });
+  return (await r.json()).id;
+}
+
+/* ---- sync ---- */
+function driveSchedule() {
+  if (!Settings.driveSync || Drive.applying) return;
+  Drive.dirty = true;
+  clearTimeout(Drive.timer);
+  Drive.timer = setTimeout(() => { driveSyncNow().catch(() => {}); }, 4000);
+}
+async function driveSyncNow() {
+  if (Drive.busy) { Drive.again = true; return; }
+  Drive.busy = true; Drive.err = ''; driveUi();
+  try {
+    if (!driveTokenOk()) throw Object.assign(new Error('no token'), { code: 'notoken' });
+    let id = Drive.fileId, remote = null;
+    if (!id) id = await driveFind();
+    if (id) { try { remote = await driveRead(id); } catch (e) { if (e.status === 404) id = null; else throw e; } }
+    const local = driveSnapshot();
+    const firstOnDevice = !DB.get('driveLast', null);
+    // Is phone par pehli baar Drive jud raha ho to Drive ki settings jeetein; warna jo naya ho wo
+    if (remote && remote.data && firstOnDevice) local.mod = 0; else if (!local.mod) local.mod = Date.now();
+    const merged = (remote && remote.data) ? driveMerge(local, remote) : local;
+    if (remote && remote.data) driveApply(merged);
+    Drive.dirty = false;
+    id = await driveWrite(id, JSON.stringify(remote && remote.data ? merged : local));
+    Drive.fileId = id; DB.set('driveFileId', id);
+    Drive.lastSync = Date.now(); DB.set('driveLast', Drive.lastSync);
+    if (!Settings.driveSync) {
+      // Drive me data pakka save ho gaya — ab server par se bhaari data hata sakte hain
+      Settings.driveSync = true; saveSettings(); Drive.serverPending = true;
+      try { await flushSync(); } catch (e) { console.warn('Server cleanup baad me hoga', e); }
+      showToast('Drive sync chalu ho gaya', 'cloud');
+    }
+    hideDriveBanner();
+  } catch (e) {
+    if (e && e.code === 'notoken') { if (Settings.driveSync) showDriveBanner('reconnect', true); }
+    else if (e && e.quota) { Drive.err = 'Drive me jagah nahi hai. Data phone me safe hai.'; showToast(Drive.err, 'alert-circle'); }
+    else { Drive.err = (e && e.message) || 'Drive sync nahi ho paaya'; console.warn('Drive sync fail:', e); }
+  } finally {
+    Drive.busy = false; driveUi();
+    if (Drive.again) { Drive.again = false; driveSchedule(); }
+  }
+}
+async function driveEnable() {
+  hideDriveBanner();
+  Drive.err = ''; driveUi();
+  const t = await driveRequestToken();
+  if (!t) { showToast('Drive ka permission nahi mila. Data abhi bhi is phone me safe hai.', 'info'); driveUi(); return; }
+  await driveSyncNow();
+}
+async function driveMainAction() {
+  if (!Settings.driveSync || !driveTokenOk()) { await driveEnable(); }
+  else { await driveSyncNow(); showToast(Drive.err || 'Sync ho gaya', Drive.err ? 'alert-circle' : 'check-circle-2'); }
+}
+function driveDisconnect() {
+  if (!confirm('Drive sync band karein? Aapka data Drive me bacha rahega, par ab ye hamare server par bhi save hone lagega.')) return;
+  Settings.driveSync = false; saveSettings();
+  if (Drive.token && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(Drive.token, () => {}); } catch (e) {} }
+  Drive.token = null; Drive.exp = 0; Drive.dirty = false;
+  syncStateToServer(true); driveUi(); showToast('Drive sync band kar diya', 'cloud-off');
+}
+
+/* ---- UI ---- */
+function _ago(ts) {
+  if (!ts) return '';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'abhi abhi';
+  if (m < 60) return m + ' minute pehle';
+  const h = Math.round(m / 60); return h < 24 ? h + ' ghante pehle' : Math.round(h / 24) + ' din pehle';
+}
+function driveUi() {
+  const t = document.getElementById('driveStatusTitle'); if (!t) return;
+  const s = document.getElementById('driveStatusSub'), b = document.getElementById('driveMainBtn'), off = document.getElementById('driveOffRow');
+  let title, sub, btn;
+  if (Drive.busy) { title = 'Sync ho raha hai…'; sub = 'Thoda ruko'; btn = 'Sync ho raha hai'; }
+  else if (!Settings.driveSync) { title = 'Drive sync band hai'; sub = Drive.err || 'Chats, notes aur progress aapki apni Google Drive me save honge'; btn = 'Drive connect karo'; }
+  else if (!driveTokenOk()) { title = 'Drive se dobara connect karein'; sub = Drive.lastSync ? 'Aakhri sync: ' + _ago(Drive.lastSync) : 'Naya data sync karne ke liye tap karein'; btn = 'Connect karo'; }
+  else { title = 'Google Drive se connected'; sub = Drive.err || ('Aakhri sync: ' + (_ago(Drive.lastSync) || 'abhi')); btn = 'Abhi sync karo'; }
+  t.textContent = title; s.textContent = sub; b.textContent = btn; b.disabled = !!Drive.busy;
+  if (off) off.style.display = Settings.driveSync ? '' : 'none';
+}
+function showDriveBanner(mode, quiet) {
+  const el = document.getElementById('driveBanner'); if (!el) return;
+  const app = document.getElementById('app'); if (!app || !app.classList.contains('show')) return;
+  if (mode === 'reconnect' && (DB.get('driveSnooze', 0) > Date.now() || (quiet && Drive.bannerShown))) return;
+  Drive.bannerMode = mode; Drive.bannerShown = true;
+  document.getElementById('driveBannerTitle').textContent = mode === 'offer' ? 'Apna data apni Google Drive me save karein?' : 'Drive se connect karein';
+  document.getElementById('driveBannerText').textContent = mode === 'offer'
+    ? 'Aapki chats, notes aur progress aapki apni Drive me rahenge, hamare server par nahi. Phone badalne par bhi wapas mil jayenge.'
+    : 'Aapka naya data Drive me save karne ke liye ek baar tap karein.';
+  document.getElementById('driveBannerBtn').textContent = mode === 'offer' ? 'Allow Drive' : 'Connect';
+  el.classList.add('show');
+}
+function hideDriveBanner() { const el = document.getElementById('driveBanner'); if (el) el.classList.remove('show'); }
+function driveBannerLater() {
+  if (Drive.bannerMode === 'offer') DB.set('driveDeclined', true); else DB.set('driveSnooze', Date.now() + 30 * 60000);
+  hideDriveBanner();
+}
+function driveAfterLogin() {
+  if (!getToken() || !State.user) return;
+  if (Settings.driveSync) { if (!driveTokenOk()) setTimeout(() => showDriveBanner('reconnect'), 1500); }
+  else if (DB.get('authProvider', null) === 'google' && !DB.get('driveDeclined', false)) setTimeout(() => showDriveBanner('offer'), 2500);
+  driveUi();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && Settings.driveSync && Drive.dirty && driveTokenOk()) driveSyncNow().catch(() => {}); });
+setInterval(() => { driveUi(); }, 30000);
+
+/* ---- backup file ---- */
+function restoreFromFile(ev) {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = '';
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const j = JSON.parse(r.result); const d = j.data && typeof j.data === 'object' && !Array.isArray(j.data) ? j.data : j;
+      const picked = {}; DRIVE_KEYS.forEach(k => { if (d[k] !== undefined) picked[k] = d[k]; });
+      if (!Object.keys(picked).length) throw new Error('bad');
+      if (d.settings) picked.settings = d.settings;
+      const merged = driveMerge(driveSnapshot(), { mod: 0, data: picked });
+      merged.mod = Date.now();
+      driveApply(merged); DB.set('localMod', Date.now()); syncStateToServer(true);
+      showToast('Backup wapas aa gaya', 'check-circle-2');
+    } catch (e) { showToast('Ye sahi backup file nahi hai', 'alert-circle'); }
+  };
+  r.readAsText(f);
+}
+
+/* ---- local data saaf karna (logout / dusra user) ---- */
+function clearLocalUserData() {
+  ['progress','notes','chats','deletedChats','activeChat','bookmarks','flashcards','quizScores','xp','streak','recent','lastLesson','weeklyLessons',
+   'driveSync','driveFileId','driveLast','localMod','driveDeclined','driveSnooze'].forEach(k => DB.del(k));
+  State.progress = {}; State.notes = {}; State.chats = []; State.activeChat = null; State.bookmarks = []; State.flashcards = [];
+  State.quizScores = {}; State.xp = 0; State.streak = { count: 0, lastDate: null, days: {} }; State.deletedChats = {}; State.recent = [];
+  State.lastLesson = null; State.weeklyLessons = { week: null, count: 0 };
+  Settings.driveSync = false;
+  if (Drive.token && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(Drive.token, () => {}); } catch (e) {} }
+  Drive.token = null; Drive.exp = 0; Drive.fileId = null; Drive.lastSync = null; Drive.lastXp = 0; Drive.err = ''; Drive.dirty = false; Drive.bannerShown = false;
+  clearTimeout(Drive.timer); hideDriveBanner(); driveUi();
+}
+function prepareForUser(email, provider) {
+  const e = String(email || '').toLowerCase(), last = DB.get('lastEmail', null);
+  if (last && last !== e) clearLocalUserData();
+  DB.set('lastEmail', e); DB.set('authProvider', provider);
 }
 
 /* DATA */
@@ -2165,6 +2469,7 @@ async function doLogin() {
   try {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'login', email, password: pass }) });
     setToken(data.token);
+    prepareForUser(data.user.email, 'password');
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Welcome back!', 'check-circle-2');
@@ -2206,6 +2511,7 @@ async function doSignup() {
   try {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'signup', name, email, password: p1 }) });
     setToken(data.token);
+    prepareForUser(data.user.email, 'password');
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Account created!', 'party-popper');
@@ -2243,6 +2549,7 @@ async function handleGoogleCredential(response) {
   try {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'google', credential: response.credential }) });
     setToken(data.token);
+    prepareForUser(data.user.email, 'google');
     State.user = { name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Welcome, ' + data.user.name.split(' ')[0] + '!', 'check-circle-2');
@@ -2449,7 +2756,7 @@ function applyAllSettings() {
   if (Settings.miniSidebar) document.getElementById('appLayout').classList.add('mini');
   applyTheme(); renderShortcuts();
 }
-function switchSettingsPanel(panel) { document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === panel)); document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); document.querySelectorAll('.settings-mobile-tab').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); lucide.createIcons(); }
+function switchSettingsPanel(panel) { try { driveUi(); } catch (e) {} document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === panel)); document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); document.querySelectorAll('.settings-mobile-tab').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); lucide.createIcons(); }
 function toggleSetting(key) { Settings[key] = !Settings[key]; saveSettings(); applyAllSettings(); playSound('click'); const labels = { compact: 'Compact mode', reduceMotion: 'Reduce motion', pushNotif: 'Push notifications', emailNotif: 'Email updates', studyReminder: 'Study reminders', soundFx: 'Sound effects', autoPlay: 'Auto-play', autoSave: 'Auto-save', highContrast: 'High contrast', dyslexicFont: 'Dyslexia font', focusOutline: 'Focus outlines', publicProfile: 'Public profile', showProgress: 'Show progress', analytics: 'Analytics' }; showToast(labels[key] + (Settings[key] ? ' on' : ' off'), Settings[key] ? 'check-circle-2' : 'circle'); }
 function setFontSize(el, val) { Settings.fontSize = val; saveSettings(); document.documentElement.style.setProperty('--font-scale', val); document.querySelectorAll('#fontSizePills .option-pill').forEach(p => p.classList.remove('active')); el.classList.add('active'); showToast('Font size updated', 'type'); }
 function setSelect(key, val) { Settings[key] = val; saveSettings(); showToast('Saved', 'check'); }
@@ -3587,7 +3894,21 @@ function openEditName() { const m = document.getElementById('editNameModal'); do
 function closeEditName() { document.getElementById('editNameModal').classList.remove('open'); }
 function saveName() { const name = document.getElementById('editNameInput').value.trim(); if (!name) { showToast('Enter a name', 'alert-circle'); return; } State.user.name = name; DB.set('user', State.user); applyUser(); closeEditName(); showToast('Name updated', 'edit-2'); }
 function addAnotherAccount() { showToast('Opening sign in…', 'user-plus'); setTimeout(() => { State.user = null; DB.del('user'); document.getElementById('app').classList.remove('show'); document.getElementById('authScreen').classList.add('show'); switchAuth('login'); document.getElementById('loginEmail').value = ''; document.getElementById('loginPass').value = ''; }, 500); }
-function logout() { if (!confirm('Log out? Your data is saved.')) return; showToast('Logged out', 'log-out'); setTimeout(() => { State.user = null; DB.del('user'); setToken(null); document.getElementById('app').classList.remove('show'); document.getElementById('authScreen').classList.add('show'); switchAuth('login'); document.getElementById('loginEmail').value = ''; document.getElementById('loginPass').value = ''; closeSidebar(); }, 500); }
+function logout() {
+  if (!confirm('Log out? Your data is saved.')) return;
+  const pending = Settings.driveSync && Drive.dirty;
+  if (pending && !driveTokenOk() && !confirm('Kuchh naya data abhi Drive me save nahi hua. Phir bhi log out karein? (Wo data chala jayega)')) return;
+  const finish = async () => {
+    try { if (!Settings.driveSync && _syncDirty) await flushSync(); } catch (e) {}
+    State.user = null; DB.del('user'); setToken(null); clearLocalUserData();
+    document.getElementById('app').classList.remove('show'); document.getElementById('authScreen').classList.add('show');
+    switchAuth('login'); document.getElementById('loginEmail').value = ''; document.getElementById('loginPass').value = ''; closeSidebar();
+    try { renderAll(); } catch (e) {}
+  };
+  showToast('Logged out', 'log-out');
+  if (pending && driveTokenOk()) { driveSyncNow().catch(() => {}).then(() => setTimeout(finish, 300)); return; }
+  setTimeout(finish, 500);
+}
 function exportData() { const data = { user: State.user, progress: State.progress, notes: State.notes, chats: State.chats, bookmarks: State.bookmarks, flashcards: State.flashcards, quizScores: State.quizScores, xp: State.xp, streak: State.streak, settings: Settings, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `learnx-backup-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); showToast('Data exported', 'download'); }
 function clearProgress() { if (!confirm('Clear all learning progress?')) return; State.progress = {}; State.xp = 0; save(); renderProfileTab(State._profileTab || 'progress'); updateHeroStats(); showToast('Progress cleared', 'rotate-ccw'); }
 function clearChats() { if (!State.chats.length) { showToast('No chats', 'info'); return; } if (!confirm('Delete all AI conversations?')) return; State.chats.forEach(c => { _abortChat(c.id); _tomb(c.id); }); State.chats = []; State.activeChat = null; save(); syncStateToServer(true); renderChatHistory(); renderChatMessages(); showToast('Chats cleared', 'trash-2'); }
@@ -3740,5 +4061,6 @@ Object.assign(window, {
 });
 </script>
 <div class="auth-busy" id="authBusy"><div class="auth-busy-box"><div class="auth-spin"></div><span id="authBusyText">Please wait…</span></div></div>
+<div class="drive-banner" id="driveBanner"><b id="driveBannerTitle">Apna data apni Google Drive me save karein?</b><p id="driveBannerText"></p><div class="row"><button class="btn btn-secondary btn-sm" onclick="driveBannerLater()" type="button">Abhi nahi</button><button class="btn btn-primary btn-sm" id="driveBannerBtn" onclick="driveEnable()" type="button">Allow Drive</button></div></div>
 </body>
 </html>
