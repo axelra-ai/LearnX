@@ -49,3 +49,37 @@ create table if not exists rate_limits (
   count integer not null default 1,
   primary key (user_id, window_start)
 );
+
+-- Origin Play: video files stay in each creator's Google Drive; only metadata lives here.
+create table if not exists videos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 160),
+  description text not null default '',
+  drive_file_id text not null unique,
+  mime_type text not null,
+  size_bytes bigint not null default 0 check (size_bytes >= 0),
+  view_count bigint not null default 0 check (view_count >= 0),
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_videos_feed on videos(created_at desc);
+create index if not exists idx_videos_owner on videos(user_id, created_at desc);
+
+create table if not exists video_follows (
+  user_id uuid not null references users(id) on delete cascade,
+  channel_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, channel_id),
+  check (user_id <> channel_id)
+);
+create index if not exists idx_video_follows_channel on video_follows(channel_id);
+
+create table if not exists video_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid not null references users(id) on delete cascade,
+  recipient_id uuid not null references users(id) on delete cascade,
+  message text not null check (char_length(message) between 1 and 2000),
+  created_at timestamptz not null default now(),
+  check (sender_id <> recipient_id)
+);
+create index if not exists idx_video_messages_pair on video_messages(sender_id, recipient_id, created_at desc);
