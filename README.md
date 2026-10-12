@@ -114,6 +114,29 @@ Bas `rfscVS0vtbw` jaisa **video ID** apne YouTube video ke ID se badal do
 Video dikhega seedha website ke andar embed ho ke — user ko kabhi YouTube
 pe jaana nahi padega.
 
+## Origin Play — user video uploads
+
+Origin Play account holders ko channel, video feed, channel search, follow aur
+follower chat deta hai. Video bytes browser se seedhe upload karne wale user ke
+Google Drive me jaate hain; database me sirf video metadata, views, follows aur
+messages save hote hain.
+
+1. Google Cloud Console me isi OAuth project ke liye **Google Drive API** enable
+   karo. Existing `GOOGLE_CLIENT_ID` Origin Play ke liye bhi use hota hai.
+2. App upload ke waqt `drive.file` permission maangta hai. User ki Drive me
+   upload karne aur apne videos delete karne ke liye ye permission zaroori hai.
+3. Public feed playback ke liye uploaded video par `Anyone with the link` ka
+   viewer access set hota hai. Iska matlab video link public hai; private video
+   uploads abhi supported nahi hain. Google Drive ki storage aur playback
+   limits apply hoti hain. Upload size limit 2 GB hai.
+4. Existing database par updated `schema.sql` dobara run karo. Isse `videos`,
+   `video_follows`, aur `video_messages` tables add hongi; purana data delete
+   nahi hota.
+
+Upload karne wala user apne Profile → Videos tab se apni video delete kar sakta
+hai. Deletion database metadata ke saath uski Google Drive file bhi delete karti
+hai. `api/videos.js` video file ko server ya database se pass nahi karta.
+
 ## AI identity aur formatting
 
 Gemini model fallback ka order Vercel Environment Variables me `GEMINI_MODEL`,
