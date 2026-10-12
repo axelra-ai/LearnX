@@ -38,7 +38,28 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { progress, notes, bookmarks, flashcards, quizScores, xp, streak, settings, chats } = req.body || {};
+      const { progress, notes, bookmarks, flashcards, quizScores, xp, streak, settings, chats, driveSync } = req.body || {};
+
+      // Drive sync wale users: unka asli data unki apni Google Drive me hai.
+      // Server par sirf ek flag aur xp ka number rakhte hain, baaki sab saaf —
+      // taaki database (Supabase) bhare nahi.
+      if (driveSync === true) {
+        await sql`
+          insert into user_state (user_id, progress, notes, bookmarks, flashcards, quiz_scores, xp, streak, settings, updated_at)
+          values (
+            ${user.uid}, '{}', '{}', '[]', '[]', '{}',
+            ${Math.max(0, parseInt(xp, 10) || 0)},
+            ${JSON.stringify({ count: 0, lastDate: null, days: {} })},
+            ${JSON.stringify({ driveSync: true })},
+            now()
+          )
+          on conflict (user_id) do update set
+            progress = '{}', notes = '{}', bookmarks = '[]', flashcards = '[]', quiz_scores = '{}',
+            xp = excluded.xp, streak = excluded.streak, settings = excluded.settings, updated_at = now()
+        `;
+        await sql`delete from chats where user_id = ${user.uid}`;
+        return res.status(200).json({ ok: true });
+      }
 
       await sql`
         insert into user_state (user_id, progress, notes, bookmarks, flashcards, quiz_scores, xp, streak, settings, updated_at)
