@@ -1,7 +1,8 @@
 # LearnX — Fully Working Setup Guide
 
 Ye guide step-by-step batata hai ki LearnX website ko live kaise karna hai —
-Gemini AI, real login (email + Google), database, aur YouTube videos ke saath.
+Gemini AI, Google-only login, Supabase Realtime, Google Drive storage aur
+YouTube videos ke saath.
 
 ## Project me kya-kya hai
 
@@ -9,20 +10,18 @@ Gemini AI, real login (email + Google), database, aur YouTube videos ke saath.
 learnx/
   public/
     index.html      ← poori website (frontend)
+      realtime-config.js ← Supabase Realtime URL/public key
     manifest.json    ← PWA icon/name info
     sw.js            ← offline caching
   api/
     chat.js          ← AI chat (Gemini ko safely call karta hai)
-    auth/
-      signup.js      ← naya account banana
-      login.js       ← email/password se login
-      google.js      ← Google Sign-In verify karna
-    state/
-      get.js         ← user ka progress/notes/chats DB se laana
-      save.js         ← user ka progress/notes/chats DB me save karna
+      auth.js          ← Google Sign-In verify karna
+      realtime-token.js ← private Supabase channel JWT
+      videos.js        ← videos, profiles, Drive chats
+      state.js         ← user state sync
   lib/
     db.js            ← database connection
-    auth.js          ← password hashing + login tokens (JWT)
+   auth.js          ← app login-token verification
     ratelimit.js     ← AI chat spam/abuse rokta hai
   schema.sql         ← database tables banane ka SQL
   package.json
@@ -34,20 +33,17 @@ learnx/
 
 Isko sambhal ke rakho, GEMINI_API_KEY ke naam se Vercel me daalna hai (Step 4).
 
-## Step 2 — Database banao (Neon — free hai)
+## Step 2 — Supabase project banao
 
-1. https://neon.tech pe jaake free account banao.
-2. "New Project" banao (koi bhi naam, region India/Singapore chuno for speed).
-3. Project khulte hi ek **Connection string** milega, jaisa:
-   `postgresql://user:pass@ep-xxxx.neon.tech/dbname?sslmode=require`
-   Ise copy karke rakho — yahi `DATABASE_URL` hai.
-4. Neon dashboard me **SQL Editor** kholo, is repo ki `schema.sql` file ka
-   pura content paste karke **Run** karo. Isse 4 tables ban jaayengi:
-   `users`, `user_state`, `chats`, `rate_limits`.
-
-> Neon serverless hai isliye Vercel ke saath best fit hai — 1000 users ek
-> saath aane pe bhi traditional database connection pool khatam nahi hota,
-> kyunki har query ek independent HTTP request ki tarah jaati hai.
+1. https://supabase.com par project banao.
+2. **Project Settings → Database → Connection string → Transaction pooler** se
+   `DATABASE_URL` lo (pooler port 6543).
+3. Supabase **SQL Editor** me updated `schema.sql` run karo. Isme chat metadata,
+   presence aur private Realtime broadcast RLS policies bhi hain.
+4. **Project Settings → API** se Project URL aur anon/public key lekar
+   `public/realtime-config.js` me placeholders replace karo.
+5. Existing email/password users ke hashes schema run hote hi clear honge;
+   account data rahega, sign-in ab sirf Google se hoga.
 
 ## Step 3 — Google Sign-In ka "Service ID" (OAuth Client ID) banao
 
@@ -67,14 +63,16 @@ Isko sambhal ke rakho, GEMINI_API_KEY ke naam se Vercel me daalna hai (Step 4).
    ```
    apna real Client ID yahan paste kar do.
 
-(Agar abhi Google login skip karna ho, koi baat nahi — email/password login
-already pura kaam karega. Baad me bhi ye step kar sakte ho.)
+Google Cloud Console me **Google Drive API** enable karo. Google sign-in
+required hai; app first use par
+`drive.appdata` aur `drive.file` permission maangega. Pehli consent ke baad
+app Drive token silently renew karne ki koshish karega.
 
 ## Step 4 — Vercel pe deploy karo
 
 1. Is poore `learnx` folder ko GitHub pe ek naye repo me push karo.
 2. https://vercel.com pe jaake **Add New → Project**, apna GitHub repo select karo.
-3. Deploy se pehle **Environment Variables** me ye 4 cheezein daalo:
+3. Deploy se pehle **Environment Variables** set karo:
 
    | Key | Value |
    |---|---|
@@ -84,9 +82,13 @@ already pura kaam karega. Baad me bhi ye step kar sakte ho.)
    | `GEMINI_MODEL_3` | teesra fallback model (optional; aage `_4` se `_10` tak bhi set kar sakte ho) |
    | `YOUTUBE_API_KEY` | YouTube Data API v3 key (playlist import ke liye) |
    | `YOUTUBE_API_REFERER` | optional; site origin, default `https://learnxtech.vercel.app/` |
-   | `DATABASE_URL` | Step 2 wala Neon connection string |
+   | `DATABASE_URL` | Supabase transaction pooler connection string |
    | `JWT_SECRET` | koi bhi lamba random string (neeche kaise banaye) |
-   | `GOOGLE_CLIENT_ID` | Step 3 wala Client ID (optional, agar Google login chahiye) |
+   | `GOOGLE_CLIENT_ID` | Required Google OAuth Client ID |
+   | `SUPABASE_JWT_SECRET` | Supabase Project Settings → API ka legacy JWT secret; server-only |
+
+`SUPABASE_JWT_SECRET` ko kabhi `public/realtime-config.js` me mat daalna. Wahan
+sirf Supabase URL aur anon/public key honi chahiye.
 
    `JWT_SECRET` banane ke liye terminal/PowerShell me:
    ```
@@ -116,10 +118,14 @@ pe jaana nahi padega.
 
 ## Origin Play — user video uploads
 
+LearnX accounts now use Google sign-in only. Google Drive access is required
+before the app opens; after initial consent the app tries to renew access
+silently, and asks the user to reconnect only if Google cannot renew it.
+
 Origin Play account holders ko channel, video feed, channel search, follow aur
 follower chat deta hai. Video bytes browser se seedhe upload karne wale user ke
-Google Drive me jaate hain; database me sirf video metadata, views, follows aur
-messages save hote hain.
+Google Drive me jaate hain; database me video metadata, follows, temporary
+presence aur Drive conversation references jaise chhote records rehte hain.
 
 1. Google Cloud Console me isi OAuth project ke liye **Google Drive API** enable
    karo. Existing `GOOGLE_CLIENT_ID` Origin Play ke liye bhi use hota hai.
@@ -130,22 +136,37 @@ messages save hote hain.
    viewer access set hota hai. Iska matlab video link public hai; private video
    uploads abhi supported nahi hain. Google Drive ki storage aur playback
    limits apply hoti hain. Upload size limit 2 GB hai.
-4. Existing database par updated `schema.sql` dobara run karo. Isse Origin Play
-   tables ke saath `video_presence` aur chat lookup index add honge; purana data
-   delete nahi hota.
+4. Existing database par updated `schema.sql` dobara run karo. Isse
+   `video_conversations`, `video_presence`, chat indexes aur private Realtime
+   policies add hongi; purana data delete nahi hota.
+5. `public/realtime-config.js` me apne Supabase project ka URL aur anon key
+   set karo. Anon key browser me public hoti hai; access ko SQL RLS policies
+   restrict karti hain.
+6. Vercel environment variable `SUPABASE_JWT_SECRET` me Supabase project ka
+   JWT secret set karo. Ye secret server-only hai; ise frontend/config file me
+   mat rakho.
 
 Upload karne wala user apne Profile → Videos tab se apni video delete kar sakta
 hai. Deletion database metadata ke saath uski Google Drive file bhi delete karti
 hai. `api/videos.js` video file ko server ya database se pass nahi karta.
 
-Direct messages database me rehte hain, taaki dono participants ko jaldi deliver
-hon. Active chat lagbhag har 2.2 seconds me refresh hoti hai; online/typing state
-short-lived database presence se aati hai. Chat delete karne par dono taraf ke
-messages delete hote hain. Profile photos `drive.file` permission se user ke
-Google Drive me upload hoti hain aur profile display ke liye `Anyone with the
-link` reader access leti hain. Photo content Drive me hai; database me sirf uska
-URL rehta hai. Purani database photo ko Drive me move karne ke liye nayi profile
-photo upload karein.
+Direct-message content ek shared Google Drive folder me rehta hai; har chat ke
+dono participants ko folder access diya jata hai. Database me sirf participant
+IDs, Drive folder ID aur last-activity time rehta hai. Existing database chats
+Drive permission milne par chat kholte hi batches me migrate hoti hain; Chats
+page ke cloud-upload button se purani conversations bulk migrate kar sakte hain. Saare
+message files verify hone ke baad hi purane message rows delete hote hain.
+Private Supabase Realtime broadcasts new messages immediately; Drive upload then
+persists them. If Realtime configuration is missing/unavailable, the UI falls
+back to polling. Long-press (or right-click) a message to delete its Drive file
+and broadcast removal to the other participant.
+Active chat lagbhag har 2.2 seconds me refresh hoti hai; online/typing state
+short-lived database presence se aati hai. Chat delete karne par Drive ke message
+files aur database reference delete hote hain. Profile photos `drive.file`
+permission se user ke Google Drive me upload hoti hain aur profile display ke
+liye `Anyone with the link` reader access leti hain. Photo content Drive me hai;
+database me sirf uska URL rehta hai. Purani database photo ko Drive me move karne
+ke liye nayi profile photo upload karein.
 
 ## AI identity aur formatting
 
@@ -166,7 +187,7 @@ steps ke liye numbered lists, wagera — sirf plain paragraph text nahi.
 
 - **Vercel serverless functions** har request ke liye automatically scale
   hoti hain — ek function crash nahi karwa sakta doosre users ko affect.
-- **Neon serverless Postgres** connection-pool exhaustion se bachata hai.
+- **Supabase Postgres** connection pooler aur Realtime private broadcasts use hote hain.
 - **Per-user rate limit** (`lib/ratelimit.js`) — har user max 15 AI
   messages/minute bhej sakta hai, taaki koi spam na kar sake aur Gemini
   quota surakshit rahe.
