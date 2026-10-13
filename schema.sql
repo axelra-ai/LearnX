@@ -10,8 +10,10 @@ create table if not exists users (
   password_hash text,
   google_id text unique,
   avatar_url text,
+  drive_refresh_token text,
   created_at timestamptz default now()
 );
+alter table users add column if not exists drive_refresh_token text;
 update users set password_hash = null where password_hash is not null;
 
 -- Har user ka progress/notes/xp/streak — ek hi JSONB row, fast aur simple
@@ -106,7 +108,6 @@ create index if not exists idx_video_conversations_one on video_conversations(pa
 create index if not exists idx_video_conversations_two on video_conversations(participant_two_id, updated_at desc);
 
 -- Supabase Realtime Broadcast is private and limited to actual conversation participants.
-alter table realtime.messages enable row level security;
 drop policy if exists learnx_chat_receive on realtime.messages;
 create policy learnx_chat_receive on realtime.messages
   for select to authenticated
