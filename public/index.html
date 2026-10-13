@@ -502,6 +502,11 @@ img{max-width:100%;display:block}
 .origin-channel-link:hover{color:var(--accent)}
 .origin-channel-row{display:flex;align-items:center;gap:9px;min-width:0}
 .origin-avatar{width:30px;height:30px;flex:0 0 30px;border-radius:50%;object-fit:cover;background:var(--accent-bg);display:grid;place-items:center;color:var(--accent);font-size:12px;font-weight:700}
+.origin-avatar-wrap{position:relative;display:inline-grid;width:40px;height:40px;flex:0 0 40px;place-items:center}
+.origin-avatar-wrap .origin-avatar{width:40px;height:40px;flex-basis:40px}
+.origin-presence-dot{position:absolute;right:0;bottom:0;width:11px;height:11px;border:2px solid var(--surface);border-radius:50%;background:#7b8582}
+.origin-presence-dot.online{background:#25c46a}
+.origin-presence-online{color:#25c46a!important}
 .origin-channels{display:grid;gap:8px;margin:0 0 26px;max-width:620px}
 .origin-channel-result{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border);cursor:pointer}
 .origin-channel-result:hover{background:var(--surface-2)}
@@ -2491,7 +2496,7 @@ const State = {
 };
 const Drive = { token: null, exp: 0, fileId: DB.get('driveFileId', null), tc: null, busy: false, again: false, dirty: false, timer: null,
   lastSync: DB.get('driveLast', null), err: '', applying: false, serverPending: false, lastXp: DB.get('xp', 0), bannerShown: false, bannerMode: 'offer', _res: null };
-const Origin = { token: null, exp: 0, ownerId: null, tc: null, searchTimer: null, chatRefreshTimer: null, channelId: null, chats: [], activeChatId: null, videos: new Map() };
+const Origin = { token: null, exp: 0, ownerId: null, tc: null, searchTimer: null, chatRefreshTimer: null, presenceTimer: null, typingTimer: null, typingSentAt: 0, channelId: null, chats: [], activeChatId: null, videos: new Map() };
 function save() {
   ['progress','notes','chats','deletedChats','activeChat','bookmarks','flashcards','quizScores','xp','streak','recent','lastLesson','weeklyLessons'].forEach(k => DB.set(k, State[k]));
   _localVer++;
@@ -2859,15 +2864,38 @@ async function loadOriginChats() {
       if (currentPage !== 'originChat' || !getToken() || document.hidden) return;
       loadOriginChats();
       if (Origin.activeChatId) loadOriginMessages(Origin.activeChatId, 'originDirectMessages');
-    }, 7000);
+    }, 2200);
   }
   if (!Origin.chats.length) list.innerHTML = '<div class="empty-state"><p>Chats load ho rahi hain...</p></div>';
   try {
     const data = await apiFetch('/api/videos?action=inbox');
     Origin.chats = data.conversations || [];
+    if (Origin.activeChat) {
+      const active = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
+      if (active) Object.assign(Origin.activeChat, active);
+      updateOriginThreadStatus();
+    }
     renderOriginChats();
   } catch (e) { list.innerHTML = '<div class="empty-state"><p>Chats load nahi ho paayi.</p></div>'; }
 }
+function originPresenceUpdate(online) {
+  if (!State.user || !State.user.id || !getToken()) return;
+  apiFetch('/api/videos?action=presence', { method: 'POST', body: JSON.stringify({ online: !!online }), keepalive: !online }).catch(() => {});
+}
+function startOriginPresence() {
+  if (!State.user || !State.user.id || !getToken()) return;
+  originPresenceUpdate(!document.hidden);
+  if (!Origin.presenceTimer) Origin.presenceTimer = setInterval(() => {
+    if (getToken()) originPresenceUpdate(!document.hidden);
+    else { clearInterval(Origin.presenceTimer); Origin.presenceTimer = null; }
+  }, 15000);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!getToken() || !State.user || !State.user.id) return;
+  originPresenceUpdate(!document.hidden);
+  if (document.hidden) stopOriginTyping();
+});
+window.addEventListener('pagehide', () => originPresenceUpdate(false));
 /* ===== PROFILE PHOTO (crop + upload) ===== */
 const Avatar = { img: null, zoom: 1, base: 1, ox: 0, oy: 0, drag: null };
 const AV_BOX = 280;
@@ -2962,20 +2990,68 @@ function avatarExport() {
 async function saveAvatar() {
   if (!Avatar.img) return;
   const btn = document.getElementById('avatarSaveBtn'); btn.disabled = true;
+  let uploadedId = null;
   try {
-    const d = await apiFetch('/api/videos?action=set-avatar', { method: 'POST', body: JSON.stringify({ image: avatarExport() }) });
+    const previousId = avatarDriveFileId(State.user && State.user.avatarUrl);
+    const { driveFileId, token } = await uploadAvatarToDrive(avatarExport());
+    uploadedId = driveFileId;
+    const d = await apiFetch('/api/videos?action=set-avatar', { method: 'POST', body: JSON.stringify({ driveFileId, googleToken: token }) });
+    if (previousId && previousId !== driveFileId) {
+      try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(previousId), { method: 'DELETE' }); } catch (e) {}
+    }
     closeAvatarModal(); setUserAvatar(d.avatarUrl);
     showToast('Profile photo update ho gayi', 'check-circle-2');
-  } catch (e) { showToast((e.data && e.data.error) || 'Photo save nahi ho paayi. Dobara try karein.', 'alert-circle'); }
+  } catch (e) {
+    if (uploadedId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(uploadedId), { method: 'DELETE' }); } catch (cleanupError) {} }
+    showToast((e.data && e.data.error) || e.message || 'Photo save nahi ho paayi. Dobara try karein.', 'alert-circle');
+  }
   finally { btn.disabled = false; }
+}
+function avatarDriveFileId(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'drive.google.com' ? parsed.searchParams.get('id') : null;
+  } catch (e) { return null; }
+}
+async function uploadAvatarToDrive(dataUrl) {
+  const token = await originDriveToken();
+  if (!token) throw new Error('Profile photo Drive me save karne ke liye Google Drive permission allow karein.');
+  const encoded = dataUrl.split(',')[1] || '';
+  const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+  const boundary = 'learnx' + Date.now().toString(36);
+  const metadata = JSON.stringify({ name: 'learnx-avatar-' + State.user.id + '-' + Date.now() + '.jpg', mimeType: 'image/jpeg' });
+  const body = new Blob([
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + metadata + '\r\n',
+    '--' + boundary + '\r\nContent-Type: image/jpeg\r\n\r\n', bytes, '\r\n--' + boundary + '--'
+  ], { type: 'multipart/related; boundary=' + boundary });
+  const response = await originDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body
+  });
+  const file = await response.json();
+  try {
+    await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.id) + '/permissions?fields=id', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+  } catch (e) {
+    try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.id), { method: 'DELETE' }); } catch (cleanupError) {}
+    throw e;
+  }
+  return { driveFileId: file.id, token };
 }
 async function removeAvatar() {
   if (!confirm('Profile photo hata dein?')) return;
   try {
+    const driveId = avatarDriveFileId(State.user && State.user.avatarUrl);
+    if (driveId) {
+      const token = await originDriveToken();
+      if (!token) throw new Error('Drive permission ke bina photo delete nahi ho sakti.');
+      try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveId), { method: 'DELETE' }); }
+      catch (e) { if (e.status !== 404) throw e; }
+    }
     await apiFetch('/api/videos?action=remove-avatar', { method: 'POST', body: JSON.stringify({}) });
     closeAvatarModal(); setUserAvatar('');
     showToast('Profile photo hata di gayi', 'trash-2');
-  } catch (e) { showToast('Photo hata nahi paayi', 'alert-circle'); }
+  } catch (e) { showToast(e.message || 'Photo hata nahi paayi', 'alert-circle'); }
 }
 
 /* ===== CHATS: WhatsApp-style list + Instagram-style conversation ===== */
@@ -3020,10 +3096,10 @@ function renderOriginChats() {
   list.innerHTML = chats.map(chat => {
     const unread = chatIsUnread(chat), mine = chat.senderId !== chat.channelId;
     return `<button class="origin-conversation ${Origin.activeChatId === chat.channelId ? 'active' : ''} ${unread ? 'unread' : ''}" data-origin-chat-id="${originAttr(chat.channelId)}" data-channel-name="${originAttr(chat.channelName)}" data-avatar-url="${originAttr(chat.avatarUrl || '')}" type="button">
-      ${originAvatarHTML(chat)}
+      <span class="origin-avatar-wrap">${originAvatarHTML(chat)}<i class="origin-presence-dot ${chat.isOnline ? 'online' : ''}"></i></span>
       <span class="origin-conversation-copy">
         <span class="origin-conversation-top"><b>${esc(chat.channelName)}</b><time>${esc(chatListTime(new Date(chat.createdAt).getTime()))}</time></span>
-        <span class="origin-conversation-preview">${mine ? '<i data-lucide="check-check" class="wa-ticks"></i>' : ''}<span class="wa-text">${esc(chat.message)}</span>${unread ? '<span class="wa-dot"></span>' : ''}</span>
+        <span class="origin-conversation-preview">${mine ? '<i data-lucide="check-check" class="wa-ticks"></i>' : ''}<span class="wa-text">${chat.isTyping ? '<i>typing...</i>' : esc(chat.message)}</span>${unread ? '<span class="wa-dot"></span>' : ''}</span>
       </span></button>`;
   }).join('');
   list.scrollTop = scroll;
@@ -3036,7 +3112,8 @@ function renderOriginChats() {
 }
 async function openOriginChatThread(channelId, channelName, avatarUrl = '') {
   Origin.activeChatId = channelId;
-  Origin.activeChat = { id: channelId, name: channelName, avatarUrl };
+  const presence = Origin.chats.find(chat => chat.channelId === channelId) || {};
+  Origin.activeChat = { id: channelId, name: channelName, avatarUrl, isOnline: !!presence.isOnline, isTyping: !!presence.isTyping };
   Origin.threadMsgs = []; Origin.pending = []; Origin.threadSig = '';
   const layout = document.getElementById('originChatLayout');
   const placeholder = document.getElementById('originChatPlaceholder');
@@ -3050,8 +3127,9 @@ async function openOriginChatThread(channelId, channelName, avatarUrl = '') {
   thread.innerHTML = `
     <div class="ig-head">
       <button class="origin-thread-back" onclick="backToOriginChats()" type="button" aria-label="Back to chats"><i data-lucide="arrow-left"></i></button>
-      <button class="ig-who" onclick="openOriginChannel('${cid}')" type="button">${originAvatarHTML({ name: channelName, avatarUrl })}<span><b>${esc(channelName)}</b><small>Origin Play</small></span></button>
+      <button class="ig-who" onclick="openOriginChannel('${cid}')" type="button">${originAvatarHTML({ name: channelName, avatarUrl })}<span><b>${esc(channelName)}</b><small id="originPresenceStatus">${presence.isOnline ? 'online' : 'offline'}</small></span></button>
       <button class="btn-icon" onclick="openOriginChannel('${cid}')" type="button" title="View channel"><i data-lucide="info"></i></button>
+      <button class="btn-icon" onclick="deleteOriginConversation()" type="button" title="Delete conversation for both users" aria-label="Delete conversation"><i data-lucide="trash-2"></i></button>
     </div>
     <div class="ig-scroll origin-thread-messages" id="originDirectMessages"></div>
     <form class="ig-compose" onsubmit="sendOriginChatMessage(event)" autocomplete="off">
@@ -3063,6 +3141,7 @@ async function openOriginChatThread(channelId, channelName, avatarUrl = '') {
     </form>`;
   chatMarkRead(channelId);
   renderOriginChats(); renderIgThread(true); lucide.createIcons();
+  loadOriginChats();
   await loadIgMessages(channelId, true);
   const input = document.getElementById('originChatMessageInput');
   if (input && window.matchMedia('(min-width:641px)').matches) input.focus();
@@ -3075,12 +3154,45 @@ function backToOriginChats() {
   document.body.classList.remove('chat-open');
   if (thread) { thread.hidden = true; thread.innerHTML = ''; }
   if (placeholder) placeholder.hidden = false;
+  stopOriginTyping();
   Origin.activeChatId = null; Origin.activeChat = null; Origin.pending = [];
   renderOriginChats();
 }
 function igComposeChanged() {
   const input = document.getElementById('originChatMessageInput'), pill = document.getElementById('igPill');
   if (input && pill) pill.classList.toggle('has-text', !!input.value.trim());
+  if (!input || !Origin.activeChatId) return;
+  clearTimeout(Origin.typingTimer);
+  if (input.value.trim()) {
+    if (Date.now() - Origin.typingSentAt > 1600) {
+      Origin.typingSentAt = Date.now();
+      apiFetch('/api/videos?action=typing', { method: 'POST', body: JSON.stringify({ recipientId: Origin.activeChatId, typing: true }) }).catch(() => {});
+    }
+    Origin.typingTimer = setTimeout(stopOriginTyping, 3500);
+  } else stopOriginTyping();
+}
+function stopOriginTyping() {
+  clearTimeout(Origin.typingTimer); Origin.typingTimer = null;
+  if (!Origin.typingSentAt || !Origin.activeChatId) return;
+  Origin.typingSentAt = 0;
+  apiFetch('/api/videos?action=typing', { method: 'POST', body: JSON.stringify({ recipientId: Origin.activeChatId, typing: false }) }).catch(() => {});
+}
+function updateOriginThreadStatus() {
+  const status = document.getElementById('originPresenceStatus');
+  if (!status || !Origin.activeChat) return;
+  const typing = !!Origin.activeChat.isTyping;
+  status.textContent = typing ? 'typing...' : Origin.activeChat.isOnline ? 'online' : 'offline';
+  status.classList.toggle('origin-presence-online', Origin.activeChat.isOnline && !typing);
+}
+async function deleteOriginConversation() {
+  const channelId = Origin.activeChatId;
+  if (!channelId || !confirm('Is conversation ke dono taraf ke saare messages delete honge. Continue?')) return;
+  try {
+    await apiFetch('/api/videos?action=conversation&with=' + encodeURIComponent(channelId), { method: 'DELETE' });
+    Origin.chats = Origin.chats.filter(chat => chat.channelId !== channelId);
+    backToOriginChats(); renderOriginChats();
+    showToast('Conversation delete ho gayi', 'trash-2');
+  } catch (e) { showToast(e.data && e.data.error || 'Conversation delete nahi ho paayi', 'alert-circle'); }
 }
 async function loadIgMessages(channelId, force) {
   const el = document.getElementById('originDirectMessages'); if (!el) return;
@@ -3124,6 +3236,7 @@ function sendOriginChatMessage(event, forced) {
   const channelId = Origin.activeChatId; if (!channelId) return;
   const input = document.getElementById('originChatMessageInput');
   const message = forced || (input && input.value.trim()); if (!message) return;
+  stopOriginTyping();
   if (input && !forced) { input.value = ''; igComposeChanged(); input.focus(); }
   const now = new Date().toISOString();
   const tmp = { id: 'tmp' + Date.now(), senderId: State.user && State.user.id, message, createdAt: now, pending: true };
@@ -3645,6 +3758,7 @@ function enterApp() {
   hideAuthBusy();
   document.getElementById('authScreen').classList.remove('show');
   document.getElementById('app').classList.add('show');
+  startOriginPresence();
   checkStreak(); applyUser(); applyAllSettings(); renderAll();
   loadCoursesFromServer().then(() => {
     if (currentPage === 'courses') renderCourseCategories();
