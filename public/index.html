@@ -1462,6 +1462,85 @@ html[data-theme] body .ai-starters .ai-starter,html[data-theme] body .ai-starter
 html[data-theme] body .lesson-item,html[data-theme] body .module-head{border-radius:0}
 html[data-theme] body :is(.lesson-item:hover,.module-head:hover){background:var(--hover-soft)}
 html[data-theme] body .home-hero-grid{display:none}
+
+/* ===== PROFILE PHOTO ===== */
+.avatar-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.side-user .avatar,.topbar-user .avatar{position:relative;overflow:hidden}
+.avatar-edit{position:absolute;left:-6px;bottom:-6px;width:36px;height:36px;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--surface-solid);border:2px solid var(--accent);color:var(--accent);cursor:pointer;z-index:2;transition:all .2s}
+.avatar-edit svg{width:16px;height:16px}
+.avatar-edit:hover{background:var(--accent);color:#fff;transform:scale(1.08)}
+.crop-wrap{position:relative;width:280px;max-width:100%;height:280px;margin:0 auto 18px;border-radius:18px;overflow:hidden;background:#000;touch-action:none;cursor:grab;user-select:none}
+.crop-wrap:active{cursor:grabbing}
+.crop-wrap canvas{display:block;width:280px;height:280px}
+.crop-wrap::after{content:'';position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(0,0,0,.58);border:2px solid rgba(255,255,255,.75);pointer-events:none}
+.crop-zoom{display:flex;align-items:center;gap:12px;margin:0 auto 20px;max-width:280px;color:var(--text-dim)}
+.crop-zoom svg{width:18px;height:18px;flex-shrink:0}
+.crop-zoom input{flex:1;min-width:0;accent-color:var(--accent)}
+
+/* ===== CHATS: WhatsApp-style list + Instagram-style conversation ===== */
+html[data-theme] body .origin-chat-layout{grid-template-columns:minmax(300px,380px) minmax(0,1fr);background:var(--bg);border-radius:18px}
+.origin-chat-list-head{padding:18px 18px 10px;border-bottom:0}
+.origin-chat-list-head h2{font-family:var(--sans);font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:14px}
+.origin-chat-search{height:46px;padding:0 16px;gap:12px;border-radius:100px;background:var(--surface-2)}
+.origin-chat-search svg{width:18px;height:18px}
+.origin-chat-search input{font-size:15px}
+.origin-conversations{padding:4px 0 14px}
+.origin-conversation{gap:14px;padding:11px 18px;border-bottom:0}
+.origin-conversation .origin-avatar{width:52px;height:52px;flex:0 0 52px;font-size:21px;font-weight:600}
+.origin-conversation-top b{font-size:16.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.origin-conversation-top time{font-size:12px}
+.origin-conversation-preview{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:14.5px;color:var(--text-dim)}
+.origin-conversation-preview .wa-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wa-ticks{width:17px;height:17px;flex-shrink:0;color:var(--accent)}
+.wa-dot{width:11px;height:11px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-left:6px}
+.origin-conversation.unread .origin-conversation-top b{font-weight:700}
+.origin-conversation.unread .origin-conversation-top time{color:var(--accent);font-weight:600}
+.origin-conversation.unread .wa-text{color:var(--text);font-weight:500}
+.origin-chat-empty[hidden],#originChatThread[hidden]{display:none!important}
+.ig-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg)}
+.ig-who{display:flex;align-items:center;gap:12px;flex:1;min-width:0;padding:0;border:0;background:none;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.ig-who .origin-avatar{width:40px;height:40px;flex:0 0 40px;font-size:16px}
+.ig-who span{min-width:0}
+.ig-who b{display:block;font-size:15.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ig-who small{display:block;margin-top:1px;font-size:12px;color:var(--text-dim)}
+#originDirectMessages.ig-scroll{flex:1;min-height:0;max-height:none;overflow-y:auto;display:flex;flex-direction:column;gap:0;margin:0;padding:6px 12px 10px;background:var(--bg)}
+.ig-intro{display:flex;flex-direction:column;align-items:center;gap:3px;padding:28px 10px 20px;text-align:center}
+.ig-intro .origin-avatar{width:88px;height:88px;flex-basis:88px;font-size:34px;margin-bottom:8px}
+.ig-intro b{font-size:18px;font-weight:700}
+.ig-intro span{font-size:13px;color:var(--text-dim);margin-bottom:10px}
+.ig-hint{text-align:center;font-size:13px;color:var(--text-dim);padding:4px 0 18px}
+.ig-sep{align-self:center;margin:16px 0 8px;font-size:11.5px;font-weight:500;color:var(--text-dimmer)}
+.ig-row{display:flex;align-items:flex-end;gap:8px;margin-top:2px}
+.ig-row.first{margin-top:9px}
+.ig-row.me{justify-content:flex-end}
+.ig-av{width:28px;flex:0 0 28px}
+.ig-av .origin-avatar{width:28px;height:28px;flex-basis:28px;font-size:11px}
+.ig-msg{max-width:min(74%,420px);padding:9px 14px;font-size:15px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap;border-radius:22px}
+.ig-row.them .ig-msg{background:var(--surface-3);color:var(--text)}
+.ig-row.me .ig-msg{background:var(--accent);color:#fff}
+.ig-row.them:not(.first) .ig-msg{border-top-left-radius:6px}
+.ig-row.them:not(.last) .ig-msg{border-bottom-left-radius:6px}
+.ig-row.me:not(.first) .ig-msg{border-top-right-radius:6px}
+.ig-row.me:not(.last) .ig-msg{border-bottom-right-radius:6px}
+.ig-msg.emoji{background:none!important;font-size:42px;line-height:1.15;padding:0 4px}
+.ig-msg.pending{opacity:.55}
+.ig-compose{padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--bg)}
+.ig-pill{display:flex;align-items:center;gap:6px;min-height:46px;padding:0 6px 0 18px;border-radius:100px;border:1px solid var(--border-2);background:var(--surface)}
+.ig-pill:focus-within{border-color:var(--accent)}
+.ig-pill input{flex:1;min-width:0;padding:10px 0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:15px}
+.ig-pill button{display:grid;place-items:center;height:38px;min-width:38px;border:0;border-radius:100px;background:none;color:var(--text);cursor:pointer;font:inherit;font-weight:600}
+.ig-pill button svg{width:22px;height:22px}
+.ig-pill .ig-send{display:none;padding:0 14px;color:var(--accent);font-size:15px}
+.ig-pill.has-text .ig-send{display:grid}
+.ig-pill.has-text .ig-heart{display:none}
+@media(max-width:640px){
+  .origin-chat-list-head h2{display:none}
+  .origin-chat-list-head{padding:12px 14px 6px}
+  html[data-theme] body .origin-chat-layout{margin:-14px -14px 0;border:0;border-radius:0;height:calc(100dvh - var(--topbar-h) - 80px)}
+  body.chat-open .topbar,body.chat-open .mobile-nav,body.chat-open .fab{display:none!important}
+  body.chat-open .content{padding:0!important}
+  html[data-theme] body.chat-open .origin-chat-layout{margin:0;height:100dvh}
+}
 </style>
 </head>
 <body>
@@ -1980,7 +2059,7 @@ html[data-theme] body .home-hero-grid{display:none}
         <div class="page" id="page-profile">
           <div class="profile-hero">
             <div class="profile-top">
-              <div class="profile-avatar" id="profileAvatar">A<span class="level-badge" id="levelBadge">Lvl 1</span></div>
+              <div class="profile-avatar" id="profileAvatar">A<span class="level-badge" id="levelBadge">Lvl 1</span><button class="avatar-edit" onclick="openAvatarPicker()" type="button" title="Profile photo badlein" aria-label="Change profile photo"><i data-lucide="camera"></i></button></div>
               <div class="profile-info">
                 <h2 id="profileName">Anshu Kumar <span class="tag tag-accent"><i data-lucide="badge-check"></i>Member</span></h2>
                 <div class="handle" id="profileEmail">demo@learnx.app</div>
@@ -2200,6 +2279,22 @@ html[data-theme] body .home-hero-grid{display:none}
     <div class="modal-actions"><button class="btn btn-secondary" onclick="closeEditName()" type="button">Cancel</button><button class="btn btn-primary" onclick="saveName()" type="button"><i data-lucide="check"></i>Save</button></div>
   </div>
 </div>
+
+<div class="modal-overlay" id="avatarModal" onclick="if(event.target===this)closeAvatarModal()">
+  <div class="modal">
+    <h3>Profile photo</h3>
+    <p class="modal-sub">Photo ko drag karke adjust karein aur slider se zoom karein.</p>
+    <div class="crop-wrap" id="cropWrap"><canvas id="cropCanvas" width="280" height="280"></canvas></div>
+    <div class="crop-zoom"><i data-lucide="zoom-out"></i><input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" oninput="avatarZoomChanged(this.value)"><i data-lucide="zoom-in"></i></div>
+    <div class="modal-actions" style="flex-wrap:wrap">
+      <button class="btn btn-ghost" id="avatarRemoveBtn" onclick="removeAvatar()" type="button" style="display:none;margin-right:auto">Remove</button>
+      <button class="btn btn-secondary" onclick="closeAvatarModal()" type="button">Cancel</button>
+      <button class="btn btn-primary" id="avatarSaveBtn" onclick="saveAvatar()" type="button"><i data-lucide="check"></i>Save</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="avatarFile" accept="image/*" hidden onchange="avatarFilePicked(this)">
+
 <div class="modal-overlay" id="originUploadModal">
   <div class="modal">
     <h3>Upload to Origin Play</h3>
@@ -2288,6 +2383,7 @@ async function loadServerState() {
     const data = await apiFetch('/api/state');
     State.user = State.user || {};
     State.user.isAdmin = !!data.isAdmin;
+    State.user.avatarUrl = data.avatarUrl || ''; DB.set('user', State.user); try { applyAvatarImages(); } catch (e) {}
     const adminNav = document.getElementById('adminNavSection');
     if (adminNav) adminNav.style.display = State.user.isAdmin ? '' : 'none';
     if (Settings.driveSync || (data.settings && data.settings.driveSync)) {
@@ -2631,10 +2727,12 @@ function originAttr(value) {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function originJs(value) { return JSON.stringify(String(value || '')).replace(/</g, '\\u003c'); }
+function chatHue(name) { let h = 0; const t = String(name || '?'); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h % 360; }
 function originAvatarHTML(channel) {
+  const name = channel.name || channel.channelName || '?';
   return channel.avatarUrl
-    ? `<img class="origin-avatar" src="${originAttr(channel.avatarUrl)}" alt="" loading="lazy">`
-    : `<div class="origin-avatar">${esc((channel.name || '?').slice(0, 1).toUpperCase())}</div>`;
+    ? `<img class="origin-avatar" src="${originAttr(channel.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    : `<div class="origin-avatar" style="background:hsl(${chatHue(name)} 42% 40%);color:#fff">${esc(name.trim().slice(0, 1).toUpperCase() || '?')}</div>`;
 }
 function originVideoCardHTML(video, owner = false) {
   Origin.videos.set(video.id, video);
@@ -2726,6 +2824,7 @@ async function toggleOriginFollow(channelId, following) {
   } catch (e) { showToast(e.data && e.data.error || 'Follow update nahi ho paaya', 'alert-circle'); }
 }
 async function loadOriginMessages(channelId, targetId = 'originMessages') {
+  if (targetId === 'originDirectMessages') return loadIgMessages(channelId);
   try {
     const data = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(channelId));
     const el = document.getElementById(targetId); if (!el) return;
@@ -2747,10 +2846,10 @@ async function loadOriginChats() {
   if (!getToken()) { list.innerHTML = '<div class="empty-state"><p>Chats dekhne ke liye login karein.</p></div>'; return; }
   if (!Origin.chatRefreshTimer) {
     Origin.chatRefreshTimer = setInterval(() => {
-      if (currentPage !== 'originChat' || !getToken()) return;
+      if (currentPage !== 'originChat' || !getToken() || document.hidden) return;
       loadOriginChats();
       if (Origin.activeChatId) loadOriginMessages(Origin.activeChatId, 'originDirectMessages');
-    }, 15000);
+    }, 7000);
   }
   if (!Origin.chats.length) list.innerHTML = '<div class="empty-state"><p>Chats load ho rahi hain...</p></div>';
   try {
@@ -2759,70 +2858,280 @@ async function loadOriginChats() {
     renderOriginChats();
   } catch (e) { list.innerHTML = '<div class="empty-state"><p>Chats load nahi ho paayi.</p></div>'; }
 }
+/* ===== PROFILE PHOTO (crop + upload) ===== */
+const Avatar = { img: null, zoom: 1, base: 1, ox: 0, oy: 0, drag: null };
+const AV_BOX = 280;
+function applyAvatarImages() {
+  const url = (State.user && State.user.avatarUrl) || '';
+  ['sideUserAvatar', 'topbarAvatar', 'profileAvatar'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    let img = el.querySelector(':scope > img.avatar-photo');
+    if (url) {
+      if (!img) {
+        img = document.createElement('img'); img.className = 'avatar-photo'; img.alt = ''; img.referrerPolicy = 'no-referrer';
+        img.onerror = () => img.remove();
+        el.insertBefore(img, el.querySelector('.level-badge') || null);
+      }
+      if (img.getAttribute('src') !== url) img.src = url;
+    } else if (img) img.remove();
+  });
+  const rm = document.getElementById('avatarRemoveBtn'); if (rm) rm.style.display = url ? '' : 'none';
+}
+function setUserAvatar(url) {
+  if (!State.user) return;
+  State.user.avatarUrl = url || '';
+  DB.set('user', State.user);
+  applyAvatarImages();
+  Origin.chats = []; // chat/feed me purani photo na dikhe
+}
+function openAvatarPicker() {
+  if (!getToken()) { showToast('Pehle login karein', 'alert-circle'); return; }
+  const f = document.getElementById('avatarFile'); f.value = ''; f.click();
+}
+function avatarFilePicked(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  if (!/^image\//.test(f.type)) { showToast('Sirf image select karein', 'alert-circle'); return; }
+  if (f.size > 20 * 1024 * 1024) { showToast('Photo 20 MB se chhoti honi chahiye', 'alert-circle'); return; }
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    Avatar.img = img; Avatar.zoom = 1;
+    Avatar.base = Math.max(AV_BOX / img.width, AV_BOX / img.height);
+    Avatar.ox = (AV_BOX - img.width * Avatar.base) / 2; Avatar.oy = (AV_BOX - img.height * Avatar.base) / 2;
+    document.getElementById('cropZoom').value = 1;
+    document.getElementById('avatarModal').classList.add('open');
+    applyAvatarImages(); lucide.createIcons(); avatarDraw();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showToast('Ye photo khul nahi paayi. JPG ya PNG try karein.', 'alert-circle'); };
+  img.src = url;
+}
+function closeAvatarModal() { document.getElementById('avatarModal').classList.remove('open'); Avatar.img = null; }
+function avatarClamp() {
+  const s = Avatar.base * Avatar.zoom, w = Avatar.img.width * s, h = Avatar.img.height * s;
+  Avatar.ox = Math.min(0, Math.max(AV_BOX - w, Avatar.ox));
+  Avatar.oy = Math.min(0, Math.max(AV_BOX - h, Avatar.oy));
+}
+function avatarDraw() {
+  if (!Avatar.img) return;
+  avatarClamp();
+  const c = document.getElementById('cropCanvas'), ctx = c.getContext('2d'), s = Avatar.base * Avatar.zoom;
+  ctx.clearRect(0, 0, AV_BOX, AV_BOX);
+  ctx.drawImage(Avatar.img, Avatar.ox, Avatar.oy, Avatar.img.width * s, Avatar.img.height * s);
+}
+function avatarZoomChanged(v) {
+  if (!Avatar.img) return;
+  const oldS = Avatar.base * Avatar.zoom;
+  const cx = (AV_BOX / 2 - Avatar.ox) / oldS, cy = (AV_BOX / 2 - Avatar.oy) / oldS; // image ka jo point beech me hai
+  Avatar.zoom = Number(v) || 1;
+  const s = Avatar.base * Avatar.zoom;
+  Avatar.ox = AV_BOX / 2 - cx * s; Avatar.oy = AV_BOX / 2 - cy * s;
+  avatarDraw();
+}
+(function initAvatarDrag() {
+  const wrap = document.getElementById('cropWrap'); if (!wrap) return;
+  wrap.addEventListener('pointerdown', e => { if (!Avatar.img) return; Avatar.drag = { x: e.clientX, y: e.clientY }; wrap.setPointerCapture(e.pointerId); });
+  wrap.addEventListener('pointermove', e => {
+    if (!Avatar.drag || !Avatar.img) return;
+    Avatar.ox += e.clientX - Avatar.drag.x; Avatar.oy += e.clientY - Avatar.drag.y;
+    Avatar.drag = { x: e.clientX, y: e.clientY }; avatarDraw();
+  });
+  const end = () => { Avatar.drag = null; };
+  wrap.addEventListener('pointerup', end); wrap.addEventListener('pointercancel', end);
+})();
+function avatarExport() {
+  const OUT = 256, k = OUT / AV_BOX, s = Avatar.base * Avatar.zoom * k;
+  const out = document.createElement('canvas'); out.width = out.height = OUT;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, OUT, OUT);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(Avatar.img, Avatar.ox * k, Avatar.oy * k, Avatar.img.width * s, Avatar.img.height * s);
+  let q = 0.86, data = out.toDataURL('image/jpeg', q);
+  while (data.length > 110000 && q > 0.4) { q -= 0.1; data = out.toDataURL('image/jpeg', q); }
+  return data;
+}
+async function saveAvatar() {
+  if (!Avatar.img) return;
+  const btn = document.getElementById('avatarSaveBtn'); btn.disabled = true;
+  try {
+    const d = await apiFetch('/api/videos?action=set-avatar', { method: 'POST', body: JSON.stringify({ image: avatarExport() }) });
+    closeAvatarModal(); setUserAvatar(d.avatarUrl);
+    showToast('Profile photo update ho gayi', 'check-circle-2');
+  } catch (e) { showToast((e.data && e.data.error) || 'Photo save nahi ho paayi. Dobara try karein.', 'alert-circle'); }
+  finally { btn.disabled = false; }
+}
+async function removeAvatar() {
+  if (!confirm('Profile photo hata dein?')) return;
+  try {
+    await apiFetch('/api/videos?action=remove-avatar', { method: 'POST', body: JSON.stringify({}) });
+    closeAvatarModal(); setUserAvatar('');
+    showToast('Profile photo hata di gayi', 'trash-2');
+  } catch (e) { showToast('Photo hata nahi paayi', 'alert-circle'); }
+}
+
+/* ===== CHATS: WhatsApp-style list + Instagram-style conversation ===== */
+function chatReadKey(id) { return 'lx_chat_read_' + id; }
+function chatMarkRead(id) { try { localStorage.setItem(chatReadKey(id), String(Date.now())); } catch (e) {} }
+function chatIsUnread(c) {
+  if (!c || c.senderId !== c.channelId) return false; // last message meri hai
+  if (Origin.activeChatId === c.channelId && currentPage === 'originChat') return false;
+  let r = 0; try { r = Number(localStorage.getItem(chatReadKey(c.channelId)) || 0); } catch (e) {}
+  return new Date(c.createdAt).getTime() > r;
+}
+function chatDayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+function chatClock(d) { return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }); }
+function chatListTime(ts) {
+  const d = new Date(ts), diff = Math.round((chatDayStart(new Date()) - chatDayStart(d)) / 864e5);
+  if (diff <= 0) return chatClock(d).toLowerCase();
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return d.toLocaleDateString('en-IN', { weekday: 'long' });
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+function chatThreadSep(ts) {
+  const d = new Date(ts), diff = Math.round((chatDayStart(new Date()) - chatDayStart(d)) / 864e5), t = chatClock(d).toUpperCase();
+  if (diff <= 0) return t;
+  if (diff === 1) return 'Yesterday ' + t;
+  if (diff < 7) return d.toLocaleDateString('en-IN', { weekday: 'long' }) + ' ' + t;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + t;
+}
+const CHAT_EMOJI_RE = /^(?:\p{Extended_Pictographic}|\uFE0F|\u200D|\s){1,8}$/u;
+
 function filterOriginChats() { renderOriginChats(); }
 function renderOriginChats() {
   const list = document.getElementById('originConversations'); if (!list) return;
   const query = (document.getElementById('originChatSearch')?.value || '').trim().toLowerCase();
-  const chats = Origin.chats.filter(chat => !query || chat.channelName.toLowerCase().includes(query));
+  const chats = Origin.chats
+    .filter(chat => !query || chat.channelName.toLowerCase().includes(query))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   if (!chats.length) {
     list.innerHTML = `<div class="empty-state"><p>${query ? 'Is naam se koi chat nahi mili.' : 'Abhi koi chat nahi. Kisi channel ko follow karke message karein.'}</p></div>`;
     return;
   }
-  list.innerHTML = chats.map(chat => `<button class="origin-conversation ${Origin.activeChatId === chat.channelId ? 'active' : ''}" data-origin-chat-id="${originAttr(chat.channelId)}" data-channel-name="${originAttr(chat.channelName)}" data-avatar-url="${originAttr(chat.avatarUrl || '')}" type="button">
-    ${originAvatarHTML(chat)}<span class="origin-conversation-copy"><span class="origin-conversation-top"><b>${esc(chat.channelName)}</b><time>${esc(_ago(new Date(chat.createdAt).getTime()))}</time></span><span class="origin-conversation-preview">${chat.senderId === (State.user && State.user.id) ? 'You: ' : ''}${esc(chat.message)}</span></span></button>`).join('');
+  const scroll = list.scrollTop;
+  list.innerHTML = chats.map(chat => {
+    const unread = chatIsUnread(chat), mine = chat.senderId !== chat.channelId;
+    return `<button class="origin-conversation ${Origin.activeChatId === chat.channelId ? 'active' : ''} ${unread ? 'unread' : ''}" data-origin-chat-id="${originAttr(chat.channelId)}" data-channel-name="${originAttr(chat.channelName)}" data-avatar-url="${originAttr(chat.avatarUrl || '')}" type="button">
+      ${originAvatarHTML(chat)}
+      <span class="origin-conversation-copy">
+        <span class="origin-conversation-top"><b>${esc(chat.channelName)}</b><time>${esc(chatListTime(new Date(chat.createdAt).getTime()))}</time></span>
+        <span class="origin-conversation-preview">${mine ? '<i data-lucide="check-check" class="wa-ticks"></i>' : ''}<span class="wa-text">${esc(chat.message)}</span>${unread ? '<span class="wa-dot"></span>' : ''}</span>
+      </span></button>`;
+  }).join('');
+  list.scrollTop = scroll;
   list.onclick = event => {
     const button = event.target.closest('[data-origin-chat-id]');
     if (!button || !list.contains(button)) return;
     openOriginChatThread(button.dataset.originChatId, button.dataset.channelName, button.dataset.avatarUrl || '');
   };
+  lucide.createIcons();
 }
 async function openOriginChatThread(channelId, channelName, avatarUrl = '') {
   Origin.activeChatId = channelId;
+  Origin.activeChat = { id: channelId, name: channelName, avatarUrl };
+  Origin.threadMsgs = []; Origin.pending = []; Origin.threadSig = '';
   const layout = document.getElementById('originChatLayout');
   const placeholder = document.getElementById('originChatPlaceholder');
   const thread = document.getElementById('originChatThread');
   if (!layout || !thread) return;
   layout.classList.add('has-active');
+  document.body.classList.add('chat-open');
   if (placeholder) placeholder.hidden = true;
   thread.hidden = false;
-  thread.innerHTML = `<div class="origin-thread-head"><button class="origin-thread-back" onclick="backToOriginChats()" type="button" aria-label="Back to chats"><i data-lucide="arrow-left"></i></button>${originAvatarHTML({ name: channelName, avatarUrl })}<div><b>${esc(channelName)}</b><small>Origin Play chat</small></div><button class="btn-icon" onclick="openOriginChannel('${esc(channelId)}')" type="button" title="Open channel"><i data-lucide="circle-user-round"></i></button></div><div class="origin-messages origin-thread-messages" id="originDirectMessages"><p class="origin-channel-stats">Messages load ho rahe hain...</p></div><form class="origin-chat-form origin-thread-form" onsubmit="sendOriginChatMessage(event)"><input id="originChatMessageInput" maxlength="2000" placeholder="Message likhein..." autocomplete="off"><button class="btn btn-primary" type="submit" aria-label="Send message"><i data-lucide="send"></i></button></form>`;
-  renderOriginChats();
-  lucide.createIcons();
-  await loadOriginMessages(channelId, 'originDirectMessages');
+  const cid = esc(channelId);
+  thread.innerHTML = `
+    <div class="ig-head">
+      <button class="origin-thread-back" onclick="backToOriginChats()" type="button" aria-label="Back to chats"><i data-lucide="arrow-left"></i></button>
+      <button class="ig-who" onclick="openOriginChannel('${cid}')" type="button">${originAvatarHTML({ name: channelName, avatarUrl })}<span><b>${esc(channelName)}</b><small>Origin Play</small></span></button>
+      <button class="btn-icon" onclick="openOriginChannel('${cid}')" type="button" title="View channel"><i data-lucide="info"></i></button>
+    </div>
+    <div class="ig-scroll origin-thread-messages" id="originDirectMessages"></div>
+    <form class="ig-compose" onsubmit="sendOriginChatMessage(event)" autocomplete="off">
+      <div class="ig-pill" id="igPill">
+        <input id="originChatMessageInput" maxlength="2000" placeholder="Message..." oninput="igComposeChanged()" enterkeyhint="send">
+        <button class="ig-send" type="submit">Send</button>
+        <button class="ig-heart" type="button" onclick="sendOriginChatMessage(null,'❤️')" aria-label="Send heart"><i data-lucide="heart"></i></button>
+      </div>
+    </form>`;
+  chatMarkRead(channelId);
+  renderOriginChats(); renderIgThread(true); lucide.createIcons();
+  await loadIgMessages(channelId, true);
+  const input = document.getElementById('originChatMessageInput');
+  if (input && window.matchMedia('(min-width:641px)').matches) input.focus();
 }
 function backToOriginChats() {
   const layout = document.getElementById('originChatLayout');
   const thread = document.getElementById('originChatThread');
+  const placeholder = document.getElementById('originChatPlaceholder');
   if (layout) layout.classList.remove('has-active');
+  document.body.classList.remove('chat-open');
   if (thread) { thread.hidden = true; thread.innerHTML = ''; }
-  Origin.activeChatId = null;
+  if (placeholder) placeholder.hidden = false;
+  Origin.activeChatId = null; Origin.activeChat = null; Origin.pending = [];
   renderOriginChats();
 }
-function sendOriginChatMessage(event) {
-  event.preventDefault();
-  const channelId = Origin.activeChatId;
-  if (!channelId) return;
+function igComposeChanged() {
+  const input = document.getElementById('originChatMessageInput'), pill = document.getElementById('igPill');
+  if (input && pill) pill.classList.toggle('has-text', !!input.value.trim());
+}
+async function loadIgMessages(channelId, force) {
+  const el = document.getElementById('originDirectMessages'); if (!el) return;
+  try {
+    const data = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(channelId));
+    if (Origin.activeChatId !== channelId) return;
+    Origin.threadMsgs = data.messages || [];
+    Origin.pending = (Origin.pending || []).filter(p => !p.sent);
+    const last = Origin.threadMsgs[Origin.threadMsgs.length - 1];
+    const sig = Origin.threadMsgs.length + ':' + (last ? last.id : '') + ':' + Origin.pending.length;
+    chatMarkRead(channelId);
+    if (force || sig !== Origin.threadSig) { Origin.threadSig = sig; renderIgThread(!!force); }
+    renderOriginChats();
+  } catch (e) {
+    if (Origin.activeChatId !== channelId) return;
+    el.innerHTML = `<p class="ig-hint" style="padding-top:40px">${esc((e.data && e.data.error) || 'Messages load nahi ho paaye.')}</p>`;
+  }
+}
+function renderIgThread(stick) {
+  const el = document.getElementById('originDirectMessages'); if (!el) return;
+  const chat = Origin.activeChat || {};
+  const list = (Origin.threadMsgs || []).concat(Origin.pending || []);
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+  const T = m => new Date(m.createdAt).getTime();
+  const sepBefore = i => i === 0 || T(list[i]) - T(list[i - 1]) > 3600e3 || new Date(T(list[i])).toDateString() !== new Date(T(list[i - 1])).toDateString();
+  let html = `<div class="ig-intro">${originAvatarHTML({ name: chat.name, avatarUrl: chat.avatarUrl })}<b>${esc(chat.name || '')}</b><span>Origin Play · LearnX</span><button class="btn btn-secondary btn-sm" onclick="openOriginChannel('${esc(chat.id || '')}')" type="button">View channel</button></div>`;
+  if (!list.length) html += '<p class="ig-hint">Abhi koi message nahi. Pehla message bhejein 👋</p>';
+  list.forEach((m, i) => {
+    const mine = m.senderId !== chat.id;
+    if (sepBefore(i)) html += `<div class="ig-sep">${esc(chatThreadSep(T(m)))}</div>`;
+    const first = sepBefore(i) || list[i - 1].senderId !== m.senderId;
+    const last = i === list.length - 1 || sepBefore(i + 1) || list[i + 1].senderId !== m.senderId;
+    const emoji = CHAT_EMOJI_RE.test(m.message);
+    html += `<div class="ig-row ${mine ? 'me' : 'them'} ${first ? 'first' : ''} ${last ? 'last' : ''}">${mine ? '' : `<span class="ig-av">${last ? originAvatarHTML({ name: chat.name, avatarUrl: chat.avatarUrl }) : ''}</span>`}<div class="ig-msg ${emoji ? 'emoji' : ''} ${m.pending ? 'pending' : ''}" title="${originAttr(new Date(T(m)).toLocaleString('en-IN'))}">${esc(m.message)}</div></div>`;
+  });
+  el.innerHTML = html;
+  if (stick || nearBottom) el.scrollTop = el.scrollHeight;
+}
+function sendOriginChatMessage(event, forced) {
+  if (event) event.preventDefault();
+  const channelId = Origin.activeChatId; if (!channelId) return;
   const input = document.getElementById('originChatMessageInput');
-  const message = input && input.value.trim(); if (!message) return;
-  const messages = document.getElementById('originDirectMessages');
-  const optimistic = document.createElement('div');
-  optimistic.className = 'origin-message mine origin-message-sending';
-  optimistic.textContent = 'You: ' + message;
-  if (messages) { messages.appendChild(optimistic); messages.scrollTop = messages.scrollHeight; }
-  input.value = '';
+  const message = forced || (input && input.value.trim()); if (!message) return;
+  if (input && !forced) { input.value = ''; igComposeChanged(); input.focus(); }
+  const now = new Date().toISOString();
+  const tmp = { id: 'tmp' + Date.now(), senderId: State.user && State.user.id, message, createdAt: now, pending: true };
+  (Origin.pending = Origin.pending || []).push(tmp);
+  renderIgThread(true);
   const chat = Origin.chats.find(item => item.channelId === channelId);
-  if (chat) { chat.message = message; chat.senderId = State.user.id; chat.createdAt = new Date().toISOString(); }
+  if (chat) { chat.message = message; chat.senderId = State.user && State.user.id; chat.createdAt = now; }
+  else if (Origin.activeChat) Origin.chats.push({ channelId, channelName: Origin.activeChat.name, avatarUrl: Origin.activeChat.avatarUrl, senderId: State.user && State.user.id, message, createdAt: now });
   renderOriginChats();
   apiFetch('/api/videos?action=message', { method: 'POST', body: JSON.stringify({ recipientId: channelId, message }) })
-    .then(() => {
-      if (Origin.activeChatId === channelId) loadOriginMessages(channelId, 'originDirectMessages');
-      loadOriginChats();
-    })
+    .then(() => { tmp.sent = true; if (Origin.activeChatId === channelId) loadIgMessages(channelId, true); loadOriginChats(); })
     .catch(e => {
-      optimistic.remove();
+      Origin.pending = Origin.pending.filter(p => p !== tmp);
+      if (Origin.activeChatId === channelId) renderIgThread(false);
       showToast(e.data && e.data.error || 'Message send nahi ho paaya', 'alert-circle');
     });
 }
+
 async function openOriginInboxThread(channelId, channelName) {
   const el = document.getElementById('originInboxThread'); if (!el) return;
   el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px"><b>${esc(channelName)}</b><button class="btn btn-ghost btn-sm" onclick="document.getElementById('originInboxThread').innerHTML=''" type="button">Close</button></div><div class="origin-messages" id="originMessages"></div><form class="origin-chat-form" onsubmit="sendOriginMessage(event,'${esc(channelId)}')"><input id="originMessageInput" maxlength="2000" placeholder="Reply likhein..." autocomplete="off"><button class="btn btn-primary" type="submit" aria-label="Send reply"><i data-lucide="send"></i></button></form>`;
@@ -3198,7 +3507,7 @@ async function doLogin() {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'login', email, password: pass }) });
     setToken(data.token);
     prepareForUser(data.user.email, 'password');
-    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
+    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, avatarUrl: data.user.avatarUrl || '', joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Welcome back!', 'check-circle-2');
     setTimeout(enterApp, 30);
@@ -3240,7 +3549,7 @@ async function doSignup() {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'signup', name, email, password: p1 }) });
     setToken(data.token);
     prepareForUser(data.user.email, 'password');
-    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
+    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, avatarUrl: data.user.avatarUrl || '', joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Account created!', 'party-popper');
     setTimeout(enterApp, 30);
@@ -3278,7 +3587,7 @@ async function handleGoogleCredential(response) {
     const data = await apiFetch('/api/auth', { method: 'POST', body: JSON.stringify({ action: 'google', credential: response.credential }) });
     setToken(data.token);
     prepareForUser(data.user.email, 'google');
-    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, joined: new Date().toISOString() };
+    State.user = { id: data.user.id, name: data.user.name, email: data.user.email, avatarUrl: data.user.avatarUrl || '', joined: new Date().toISOString() };
     DB.set('user', State.user);
     playSound('success'); showToast('Welcome, ' + data.user.name.split(' ')[0] + '!', 'check-circle-2');
     setTimeout(enterApp, 30);
@@ -3354,6 +3663,7 @@ function applyUser() {
   document.getElementById('setEmail').textContent = State.user.email;
   const d = new Date(State.user.joined || Date.now());
   document.getElementById('setJoined').textContent = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  applyAvatarImages();
   updateHeroStats(); lucide.createIcons();
   const h = new Date().getHours();
   const greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
@@ -3365,6 +3675,8 @@ function applyUser() {
 let currentPage = 'home';
 const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
+  if (p !== 'originChat' && Origin.activeChatId) backToOriginChats();
+  if (p !== 'originChat') document.body.classList.remove('chat-open');
   if (p !== 'originChat' && Origin.chatRefreshTimer) { clearInterval(Origin.chatRefreshTimer); Origin.chatRefreshTimer = null; }
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   const el = document.getElementById('page-' + p); if (!el) return;
