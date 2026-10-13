@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const stateRows = await sql`select * from user_state where user_id = ${user.uid}`;
-      const userRows = await sql`select is_admin from users where id = ${user.uid}`;
+      const userRows = await sql`select is_admin, avatar_url from users where id = ${user.uid}`;
       const chatRows = await sql`
         select id, title, messages, created_at as date
         from chats where user_id = ${user.uid}
@@ -23,6 +23,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         isAdmin: !!(userRows[0] && userRows[0].is_admin),
+        avatarUrl: (userRows[0] && userRows[0].avatar_url) || '',
         progress: state.progress || {},
         notes: state.notes || {},
         bookmarks: state.bookmarks || [],
