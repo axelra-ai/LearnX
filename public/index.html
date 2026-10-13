@@ -2493,7 +2493,7 @@ const State = {
   weeklyLessons: DB.get('weeklyLessons', { week: null, count: 0 }),
   _profileTab: 'progress'
 };
-const Drive = { token: null, exp: 0, fileId: DB.get('driveFileId', null), tc: null, busy: false, again: false, dirty: false, timer: null,
+const Drive = { token: null, exp: 0, fileId: DB.get('driveFileId', null), tc: null, tokenPromise: null, busy: false, again: false, dirty: false, timer: null,
   lastSync: DB.get('driveLast', null), err: '', applying: false, serverPending: false, lastXp: DB.get('xp', 0), bannerShown: false, bannerMode: 'offer', _res: null };
 const Origin = { token: null, exp: 0, ownerId: null, tc: null, tokenPromise: null, searchTimer: null, chatRefreshTimer: null, presenceTimer: null, typingTimer: null, typingSentAt: 0, migratingChats: new Set(), channelId: null, channelName: '', chats: [], activeChatId: null, videos: new Map() };
 const ChatRealtime = { client: null, channel: null, topic: null, status: 'closed', refreshTimer: null, readyPromise: null };
@@ -2586,28 +2586,33 @@ function driveApply(merged) {
   } finally { Drive.applying = false; }
 }
 
-/* ---- Required Google Drive app-data and file permissions ---- */
-function driveRequestToken(prompt = '') {
-  return new Promise((resolve) => {
-    if (!(window.google && google.accounts && google.accounts.oauth2)) { Drive.err = 'Google load nahi hua, thodi der baad try karo'; resolve(null); return; }
-    if (!Drive.tc) {
-      Drive.tc = google.accounts.oauth2.initTokenClient({
-        client_id: window.GOOGLE_CLIENT_ID, scope: DRIVE_SCOPE,
-        callback: (r) => {
-          if (r && r.access_token) {
-            Drive.token = r.access_token;
-            Drive.exp = Date.now() + ((Number(r.expires_in) || 3600) - 90) * 1000;
-            Origin.token = r.access_token; Origin.exp = Drive.exp; Origin.ownerId = State.user && State.user.id;
-            Drive.err = ''; if (Drive._res) Drive._res(Drive.token);
-          }
-          else { if (Drive._res) Drive._res(null); }
-        },
-        error_callback: () => { if (Drive._res) Drive._res(null); }
-      });
-    }
-    Drive._res = resolve;
-    try { Drive.tc.requestAccessToken({ prompt, hint: (State.user && State.user.email) || undefined }); }
-    catch (e) { resolve(null); }
+/* ---- Google Drive refresh-token authorization ---- */
+function setDriveAccessToken(accessToken, expiresIn = 3600) {
+  Drive.token = accessToken; Drive.exp = Date.now() + (Math.max(60, Number(expiresIn) || 3600) - 45) * 1000;
+  Origin.token = accessToken; Origin.exp = Drive.exp; Origin.ownerId = State.user && State.user.id;
+  return accessToken;
+}
+function driveRequestToken() {
+  if (driveTokenOk()) return Promise.resolve(Drive.token);
+  if (Drive.tokenPromise) return Drive.tokenPromise;
+  const pending = apiFetch('/api/realtime-token', { method: 'POST', body: JSON.stringify({ action: 'drive-token' }) })
+    .then(result => setDriveAccessToken(result.accessToken, result.expiresIn));
+  Drive.tokenPromise = pending;
+  pending.finally(() => { if (Drive.tokenPromise === pending) Drive.tokenPromise = null; }).catch(() => {});
+  return pending;
+}
+function requestDriveAuthorizationCode() {
+  return new Promise((resolve, reject) => {
+    if (!(window.google && google.accounts && google.accounts.oauth2)) return reject(new Error('Google authorization load nahi hua.'));
+    const client = google.accounts.oauth2.initCodeClient({
+      client_id: window.GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      ux_mode: 'popup',
+      login_hint: State.user && State.user.email || undefined,
+      callback: response => response && response.code ? resolve(response.code) : reject(new Error(response && response.error_description || 'Google Drive permission nahi mili.')),
+      error_callback: error => reject(new Error(error && error.type === 'popup_failed_to_open' ? 'Browser ne Google popup block kiya. Site popups allow karke retry karein.' : 'Google authorization cancel ho gaya.')),
+    });
+    client.requestCode();
   });
 }
 async function driveFetch(url, opts) {
@@ -2701,40 +2706,7 @@ function originDriveToken() {
   const ownerId = State.user && State.user.id;
   if (!ownerId) return Promise.resolve(null);
   if (Origin.token && Origin.ownerId === ownerId && Date.now() < Origin.exp) return Promise.resolve(Origin.token);
-  if (Origin.token && Origin.ownerId !== ownerId && window.google && google.accounts && google.accounts.oauth2) {
-    try { google.accounts.oauth2.revoke(Origin.token, () => {}); } catch (e) {}
-    Origin.token = null; Origin.exp = 0; Origin.ownerId = null;
-  }
-  if (Origin.tokenPromise) return Origin.tokenPromise;
-  if (!(window.google && google.accounts && google.accounts.oauth2)) return Promise.resolve(null);
-  const pending = new Promise((resolve) => {
-    const settle = token => {
-      const finish = Origin.resolveToken;
-      Origin.resolveToken = null;
-      if (finish) finish(token);
-    };
-    if (!Origin.tc) {
-      Origin.tc = google.accounts.oauth2.initTokenClient({
-        client_id: window.GOOGLE_CLIENT_ID, scope: ORIGIN_DRIVE_SCOPE,
-        callback: (result) => {
-          if (result && result.access_token) {
-            if (!State.user || State.user.id !== ownerId) { try { google.accounts.oauth2.revoke(result.access_token, () => {}); } catch (e) {} settle(null); return; }
-            Origin.token = result.access_token;
-            Origin.ownerId = ownerId;
-            Origin.exp = Date.now() + ((Number(result.expires_in) || 3600) - 90) * 1000;
-            settle(Origin.token);
-          } else settle(null);
-        },
-        error_callback: () => settle(null)
-      });
-    }
-    Origin.resolveToken = resolve;
-    try { Origin.tc.requestAccessToken({ prompt: '', hint: State.user && State.user.email || undefined }); }
-    catch (e) { Origin.resolveToken = null; resolve(null); }
-  });
-  Origin.tokenPromise = pending;
-  pending.then(() => { if (Origin.tokenPromise === pending) Origin.tokenPromise = null; });
-  return pending;
+  return driveRequestToken().then(token => State.user && State.user.id === ownerId ? token : null);
 }
 async function originDriveRequest(url, options = {}) {
   const token = await originDriveToken();
@@ -2880,7 +2852,7 @@ async function loadOriginChats() {
       if (currentPage !== 'originChat' || !getToken() || document.hidden) return;
       loadOriginChats();
       if (Origin.activeChatId && ChatRealtime.status !== 'SUBSCRIBED') loadOriginMessages(Origin.activeChatId, 'originDirectMessages');
-    }, 7000);
+    }, 1800);
   }
   if (!Origin.chats.length) list.innerHTML = '<div class="empty-state"><p>Chats load ho rahi hain...</p></div>';
   try {
@@ -3062,14 +3034,19 @@ async function migrateDriveConversation(channelId, channelName, source, tokenPro
 async function sendDriveChatMessage(channelId, message, tokenPromise = null, channelName = '') {
   const source = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(channelId));
   const conversation = await migrateDriveConversation(channelId, channelName || (Origin.activeChat && Origin.activeChat.name), source, tokenPromise);
-  try { if (ChatRealtime.status !== 'SUBSCRIBED') await connectOriginRealtime(channelId); } catch (e) { ChatRealtime.status = 'CHANNEL_ERROR'; }
+  if (ChatRealtime.topic !== chatRealtimeTopic(channelId) || ['closed', 'CHANNEL_ERROR', 'TIMED_OUT'].includes(ChatRealtime.status)) {
+    connectOriginRealtime(channelId).catch(() => { ChatRealtime.status = 'CHANNEL_ERROR'; });
+  }
   const id = window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'm' + Date.now() + Math.random().toString(36).slice(2);
   const record = { id, senderId: State.user.id, senderName: State.user.name, message, createdAt: new Date().toISOString() };
   let realtimeSent = false;
-  try { realtimeSent = await sendOriginRealtime('message', record); } catch (e) {}
+  if (ChatRealtime.status === 'SUBSCRIBED') {
+    try { realtimeSent = await sendOriginRealtime('message', record); } catch (e) {}
+  }
   try {
     await uploadDriveChatMessage(conversation.driveFolderId, record, conversation.knownIds);
-    await apiFetch('/api/videos?action=conversation-activity', { method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId }) });
+    apiFetch('/api/videos?action=conversation-activity', { method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId }) })
+      .catch(error => console.warn('Chat activity update failed after Drive save:', error));
     if (realtimeSent) { try { await sendOriginRealtime('message-saved', { id, driveFileId: record.driveFileId }); } catch (e) {} }
     return record;
   } catch (error) {
@@ -3082,7 +3059,17 @@ function chatRealtimeTopic(channelId) {
   return 'learnx-chat:' + participants.join(':');
 }
 function handleOriginRealtimeEvent(event, payload) {
-  if (!payload || typeof payload.id !== 'string') return;
+  if (!payload) return;
+  if (event === 'typing') {
+    if (payload.senderId !== (State.user && State.user.id) && payload.senderId === Origin.activeChatId && Origin.activeChat) {
+      Origin.activeChat.isTyping = !!payload.typing;
+      const chat = Origin.chats.find(item => item.channelId === payload.senderId);
+      if (chat) chat.isTyping = !!payload.typing;
+      updateOriginThreadStatus(); renderOriginChats();
+    }
+    return;
+  }
+  if (typeof payload.id !== 'string') return;
   const existingIndex = (Origin.threadMsgs || []).findIndex(message => message.id === payload.id);
   if (event === 'message-delete') {
     if (existingIndex >= 0) Origin.threadMsgs.splice(existingIndex, 1);
@@ -3112,11 +3099,11 @@ async function connectOriginRealtime(channelId) {
   if (!ChatRealtime.client) ChatRealtime.client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  const auth = await apiFetch('/api/realtime-token', { method: 'POST', body: JSON.stringify({}) });
+  const auth = await apiFetch('/api/realtime-token', { method: 'POST', body: JSON.stringify({ action: 'realtime' }) });
   ChatRealtime.client.realtime.setAuth(auth.token);
   ChatRealtime.topic = topic; ChatRealtime.status = 'connecting';
   ChatRealtime.channel = ChatRealtime.client.channel(topic, { config: { private: true, broadcast: { ack: true, self: false } } });
-  ['message', 'message-saved', 'message-delete'].forEach(event => {
+  ['message', 'message-saved', 'message-delete', 'typing'].forEach(event => {
     ChatRealtime.channel.on('broadcast', { event }, data => handleOriginRealtimeEvent(event, data && data.payload));
   });
   ChatRealtime.readyPromise = new Promise(resolve => {
@@ -3131,7 +3118,7 @@ async function connectOriginRealtime(channelId) {
   clearInterval(ChatRealtime.refreshTimer);
   if (ready) ChatRealtime.refreshTimer = setInterval(async () => {
     try {
-      const refreshed = await apiFetch('/api/realtime-token', { method: 'POST', body: JSON.stringify({}) });
+      const refreshed = await apiFetch('/api/realtime-token', { method: 'POST', body: JSON.stringify({ action: 'realtime' }) });
       ChatRealtime.client.realtime.setAuth(refreshed.token);
     } catch (e) { ChatRealtime.status = 'CHANNEL_ERROR'; }
   }, 5 * 60 * 1000);
@@ -3352,7 +3339,9 @@ async function openOriginChatThread(channelId, channelName, avatarUrl = '', toke
   await loadIgMessages(channelId, true, driveTokenPromise);
   connectOriginRealtime(channelId).then(ready => {
     if (!ready && Origin.activeChatId === channelId) showToast('Realtime unavailable; chat sync fallback mode me hai.', 'wifi-off');
-  }).catch(() => {});
+  }).catch(error => {
+    if (Origin.activeChatId === channelId) showToast(error.message || 'Realtime connect nahi ho paaya; fallback sync chal rahi hai.', 'wifi-off');
+  });
   const input = document.getElementById('originChatMessageInput');
   if (input && window.matchMedia('(min-width:641px)').matches) input.focus();
 }
@@ -3378,6 +3367,7 @@ function igComposeChanged() {
     if (Date.now() - Origin.typingSentAt > 1600) {
       Origin.typingSentAt = Date.now();
       apiFetch('/api/videos?action=typing', { method: 'POST', body: JSON.stringify({ recipientId: Origin.activeChatId, typing: true }) }).catch(() => {});
+      sendOriginRealtime('typing', { senderId: State.user && State.user.id, typing: true }).catch(() => {});
     }
     Origin.typingTimer = setTimeout(stopOriginTyping, 3500);
   } else stopOriginTyping();
@@ -3387,6 +3377,7 @@ function stopOriginTyping() {
   if (!Origin.typingSentAt || !Origin.activeChatId) return;
   Origin.typingSentAt = 0;
   apiFetch('/api/videos?action=typing', { method: 'POST', body: JSON.stringify({ recipientId: Origin.activeChatId, typing: false }) }).catch(() => {});
+  sendOriginRealtime('typing', { senderId: State.user && State.user.id, typing: false }).catch(() => {});
 }
 function updateOriginThreadStatus() {
   const status = document.getElementById('originPresenceStatus');
@@ -3580,7 +3571,7 @@ function sendOriginChatMessage(event, forced) {
     .catch(e => {
       Origin.pending = Origin.pending.filter(p => p !== tmp);
       if (Origin.activeChatId === channelId) renderIgThread(false);
-      showToast(e.data && e.data.error || 'Message send nahi ho paaya', 'alert-circle');
+      showToast(e.data && e.data.error || e.message || 'Message send nahi ho paaya', 'alert-circle');
     });
 }
 
@@ -3635,6 +3626,24 @@ function openOriginUpload() {
 function closeOriginUpload() {
   const modal = document.getElementById('originUploadModal'); if (modal) modal.classList.remove('open');
 }
+function uploadDriveResumable(uploadUrl, token, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('PUT', uploadUrl);
+    request.setRequestHeader('Authorization', 'Bearer ' + token);
+    request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    request.upload.onprogress = event => { if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total); };
+    request.onload = () => {
+      let data = {};
+      try { data = JSON.parse(request.responseText || '{}'); } catch (e) {}
+      if (request.status >= 200 && request.status < 300) return resolve(data);
+      reject(new Error(data.error && data.error.message || `Google Drive upload failed (${request.status}).`));
+    };
+    request.onerror = () => reject(new Error('Google Drive upload network/CORS error. Check Drive API, OAuth origin, and internet connection.'));
+    request.onabort = () => reject(new Error('Google Drive upload cancelled.'));
+    request.send(file);
+  });
+}
 async function uploadOriginVideo() {
   const fileInput = document.getElementById('originVideoFile');
   const titleInput = document.getElementById('originVideoTitle');
@@ -3657,9 +3666,11 @@ async function uploadOriginVideo() {
     status.textContent = 'Aapki Google Drive me upload ho raha hai...';
     const session = await apiFetch('/api/videos?action=drive-init', { method: 'POST', body: JSON.stringify({ googleToken: token, title, description: descriptionInput.value.trim(), mimeType: file.type, sizeBytes: file.size }) });
     progressBar.style.width = '12%';
-    const uploaded = await fetch(session.uploadUrl, { method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': file.type }, body: file });
-    if (!uploaded.ok) { let detail = ''; try { detail = (await uploaded.json()).error.message; } catch (e) {} throw new Error(detail || 'Google Drive upload fail hua.'); }
-    createdDriveId = (await uploaded.json()).id;
+    const uploaded = await uploadDriveResumable(session.uploadUrl, token, file, fraction => {
+      progressBar.style.width = Math.round(12 + fraction * 68) + '%';
+      status.textContent = `Google Drive me upload ho raha hai... ${Math.round(fraction * 100)}%`;
+    });
+    createdDriveId = uploaded.id;
     progressBar.style.width = '86%'; status.textContent = 'Video ko public playback ke liye set kar rahe hain...';
     await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdDriveId) + '/permissions?fields=id', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' })
@@ -3758,21 +3769,19 @@ function restoreFromFile(ev) {
 /* ---- local data saaf karna (logout / dusra user) ---- */
 function clearLocalUserData() {
   ['progress','notes','chats','deletedChats','activeChat','bookmarks','flashcards','quizScores','xp','streak','recent','lastLesson','weeklyLessons',
-  'driveSync','driveFileId','driveLast','localMod','driveDeclined','driveSnooze','driveAccessGranted'].forEach(k => DB.del(k));
+    'driveSync','driveFileId','driveLast','localMod','driveDeclined','driveSnooze'].forEach(k => DB.del(k));
   State.progress = {}; State.notes = {}; State.chats = []; State.activeChat = null; State.bookmarks = []; State.flashcards = [];
   State.quizScores = {}; State.xp = 0; State.streak = { count: 0, lastDate: null, days: {} }; State.deletedChats = {}; State.recent = [];
   State.lastLesson = null; State.weeklyLessons = { week: null, count: 0 };
   Settings.driveSync = false;
   closeOriginRealtime().catch(() => {});
-  if (Origin.token && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(Origin.token, () => {}); } catch (e) {} }
   Origin.token = null; Origin.exp = 0; Origin.ownerId = null; Origin.tc = null;
-  if (Drive.token && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(Drive.token, () => {}); } catch (e) {} }
   Drive.token = null; Drive.exp = 0; Drive.fileId = null; Drive.lastSync = null; Drive.lastXp = 0; Drive.err = ''; Drive.dirty = false; Drive.bannerShown = false;
   clearTimeout(Drive.timer); hideDriveBanner(); driveUi();
 }
 function prepareForUser(email, provider) {
   const e = String(email || '').toLowerCase(), last = DB.get('lastEmail', null);
-  if (last && last !== e) clearLocalUserData();
+  if (last && last !== e) { clearLocalUserData(); DB.del('driveAccessGranted'); }
   DB.set('lastEmail', e); DB.set('authProvider', provider);
 }
 
@@ -3940,8 +3949,12 @@ async function connectDriveAndContinue() {
   if (error) error.textContent = '';
   showAuthBusy('Connecting Google Drive…');
   try {
-    const accessToken = await driveRequestToken(DB.get('driveAccessGranted', false) ? '' : 'consent');
-    if (!accessToken) throw new Error('Google Drive permission nahi mili. Continue karne ke liye access allow karein.');
+    const code = await requestDriveAuthorizationCode();
+    const grant = await apiFetch('/api/realtime-token', {
+      method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({ action: 'drive-connect', code })
+    });
+    const accessToken = setDriveAccessToken(grant.accessToken, grant.expiresIn);
     await verifyDriveAccount(accessToken);
     DB.set('driveAccessGranted', true);
     if (_syncDirty || _syncTimer) await flushSync();
@@ -3961,7 +3974,7 @@ async function resumeDriveSession() {
   if (!DB.get('driveAccessGranted', false)) { showDriveAccessGate(); return; }
   showAuthBusy('Restoring Google Drive access…');
   try {
-    const accessToken = await driveRequestToken('');
+    const accessToken = await driveRequestToken();
     if (!accessToken) throw new Error('Drive access resume nahi hua. Allow Drive par tap karein.');
     await verifyDriveAccount(accessToken);
     await loadServerState();
@@ -5402,7 +5415,7 @@ function renderProfileTab(tab) {
 function openEditName() { const m = document.getElementById('editNameModal'); document.getElementById('editNameInput').value = State.user ? State.user.name : ''; m.classList.add('open'); setTimeout(() => document.getElementById('editNameInput').focus(), 100); }
 function closeEditName() { document.getElementById('editNameModal').classList.remove('open'); }
 function saveName() { const name = document.getElementById('editNameInput').value.trim(); if (!name) { showToast('Enter a name', 'alert-circle'); return; } State.user.name = name; DB.set('user', State.user); applyUser(); closeEditName(); showToast('Name updated', 'edit-2'); }
-function addAnotherAccount() { showToast('Opening sign in…', 'user-plus'); setTimeout(() => { setToken(null); clearLocalUserData(); State.user = null; DB.del('user'); if (google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); document.getElementById('app').classList.remove('show'); document.getElementById('driveAccessGate').classList.remove('show'); document.getElementById('authScreen').classList.add('show'); switchAuth('login'); }, 500); }
+function addAnotherAccount() { showToast('Opening sign in…', 'user-plus'); setTimeout(() => { setToken(null); clearLocalUserData(); DB.del('driveAccessGranted'); State.user = null; DB.del('user'); if (google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); document.getElementById('app').classList.remove('show'); document.getElementById('driveAccessGate').classList.remove('show'); document.getElementById('authScreen').classList.add('show'); switchAuth('login'); }, 500); }
 function logout() {
   if (!confirm('Log out? Your data is saved.')) return;
   const pending = Settings.driveSync && Drive.dirty;
