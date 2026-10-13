@@ -62,6 +62,9 @@ Isko sambhal ke rakho, GEMINI_API_KEY ke naam se Vercel me daalna hai (Step 4).
    window.GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
    ```
    apna real Client ID yahan paste kar do.
+8. **Authorized redirect URIs** me bhi exact production origin add karo, jaise
+   `https://learnxtech.vercel.app`. Preview/custom domains ke liye un origins ko
+   bhi add karna hoga; OAuth popup code exchange isi URI ko verify karta hai.
 
 Google Cloud Console me **Google Drive API** enable karo. Google sign-in
 required hai; app first use par
@@ -101,8 +104,8 @@ server-side DB me store hota hai taaki har app launch par popup na aaye.
 
 4. **Deploy** dabao. 1-2 minute me website live ho jaayegi
    (`https://your-project.vercel.app`).
-5. Ab wapas Google Cloud Console jaake is real URL ko **Authorized
-   JavaScript origins** me add karo (Step 3.5).
+5. Confirm karo ki production URL **Authorized JavaScript origins** aur
+   **Authorized redirect URIs** dono me listed hai.
 
 ## Step 5 — YouTube videos daalna
 
