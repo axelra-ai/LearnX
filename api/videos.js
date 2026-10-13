@@ -1,6 +1,7 @@
 import { sql } from '../lib/db.js';
 import { getUserFromReq } from '../lib/auth.js';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
 
 function requireUser(user, res) {
@@ -16,6 +17,42 @@ export default async function handler(req, res) {
   const action = req.query.action || (req.body && req.body.action);
 
   try {
+    // ---- Profile picture (chhoti JPEG, ~20KB, DB me; video ki tarah Drive me nahi) ----
+    // Public GET: <img> tag Authorization header nahi bhej sakta, isliye login zaroori nahi.
+    if (req.method === 'GET' && action === 'avatar') {
+      const id = String(req.query.id || '');
+      if (!UUID_RE.test(id)) return res.status(400).end();
+      const rows = await sql`select avatar_data from users where id = ${id}`;
+      if (!rows.length || !rows[0].avatar_data) return res.status(404).end();
+      res.setHeader('Content-Type', 'image/jpeg');
+      // URL me ?v=<time> hota hai, naya photo = naya URL, isliye lamba cache safe hai
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.status(200).send(rows[0].avatar_data);
+    }
+
+    if (req.method === 'POST' && action === 'set-avatar') {
+      if (!requireUser(user, res)) return;
+      const image = String((req.body && req.body.image) || '');
+      const prefix = 'data:image/jpeg;base64,';
+      if (!image.startsWith(prefix) || image.length > 140000) {
+        return res.status(400).json({ error: 'Photo sahi format ya size ki nahi hai.' });
+      }
+      const buf = Buffer.from(image.slice(prefix.length), 'base64');
+      // JPEG ke pehle 3 bytes: FF D8 FF  |  max 90 KB
+      if (buf.length < 200 || buf.length > 90 * 1024 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) {
+        return res.status(400).json({ error: 'Photo valid JPEG nahi hai.' });
+      }
+      const url = '/api/videos?action=avatar&id=' + user.uid + '&v=' + Date.now();
+      await sql`update users set avatar_data = ${buf}, avatar_url = ${url} where id = ${user.uid}`;
+      return res.status(200).json({ avatarUrl: url });
+    }
+
+    if (req.method === 'POST' && action === 'remove-avatar') {
+      if (!requireUser(user, res)) return;
+      await sql`update users set avatar_data = null, avatar_url = null where id = ${user.uid}`;
+      return res.status(200).json({ avatarUrl: '' });
+    }
+
     if (req.method === 'GET' && action === 'feed') {
       const rows = await sql`
         select v.id, v.user_id as "channelId", v.title, v.description,
