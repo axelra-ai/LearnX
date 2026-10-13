@@ -1,20 +1,18 @@
--- LearnX database schema
--- Neon / Supabase / kisi bhi Postgres pe chalega.
--- Isse apne DB console (Neon SQL editor / Supabase SQL editor) me ek baar
--- paste karke run kar do — ye saari tables ban jaayengi.
+-- LearnX schema for Supabase Postgres, including private Realtime policies.
 
 create extension if not exists pgcrypto;
 
--- Users: email/password aur Google dono se login support karta hai
+-- Users: Google sign-in; password_hash remains nullable for old-schema compatibility.
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   email text unique not null,
-  password_hash text,           -- null agar sirf Google se signup kiya
-  google_id text unique,        -- null agar sirf email/password se signup kiya
+  password_hash text,
+  google_id text unique,
   avatar_url text,
   created_at timestamptz default now()
 );
+update users set password_hash = null where password_hash is not null;
 
 -- Har user ka progress/notes/xp/streak — ek hi JSONB row, fast aur simple
 create table if not exists user_state (
@@ -92,6 +90,45 @@ create table if not exists video_presence (
   typing_to uuid references users(id) on delete set null,
   typing_until timestamptz
 );
+
+-- Direct-message content lives in a shared Google Drive folder; only routing metadata stays here.
+create table if not exists video_conversations (
+  id uuid primary key default gen_random_uuid(),
+  participant_one_id uuid not null references users(id) on delete cascade,
+  participant_two_id uuid not null references users(id) on delete cascade,
+  drive_folder_id text not null unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (participant_one_id < participant_two_id),
+  unique (participant_one_id, participant_two_id)
+);
+create index if not exists idx_video_conversations_one on video_conversations(participant_one_id, updated_at desc);
+create index if not exists idx_video_conversations_two on video_conversations(participant_two_id, updated_at desc);
+
+-- Supabase Realtime Broadcast is private and limited to actual conversation participants.
+alter table realtime.messages enable row level security;
+drop policy if exists learnx_chat_receive on realtime.messages;
+create policy learnx_chat_receive on realtime.messages
+  for select to authenticated
+  using (
+    extension = 'broadcast'
+    and exists (
+      select 1 from public.video_conversations c
+      where realtime.topic() = 'learnx-chat:' || c.participant_one_id::text || ':' || c.participant_two_id::text
+        and auth.uid() in (c.participant_one_id, c.participant_two_id)
+    )
+  );
+drop policy if exists learnx_chat_send on realtime.messages;
+create policy learnx_chat_send on realtime.messages
+  for insert to authenticated
+  with check (
+    extension = 'broadcast'
+    and exists (
+      select 1 from public.video_conversations c
+      where realtime.topic() = 'learnx-chat:' || c.participant_one_id::text || ':' || c.participant_two_id::text
+        and auth.uid() in (c.participant_one_id, c.participant_two_id)
+    )
+  );
 
 -- Legacy profile photo bytes; new uploads are stored in Google Drive.
 alter table users add column if not exists avatar_data bytea;
