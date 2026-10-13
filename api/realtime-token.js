@@ -103,7 +103,25 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ error: 'Token action invalid hai.' });
   } catch (err) {
-    console.error('Realtime/Drive token error:', err);
-    return res.status(500).json({ error: 'Google Drive authorization complete nahi ho paayi.' });
+    const providerError = err && err.response && err.response.data || {};
+    const code = String(providerError.error || '');
+    console.error('Realtime/Drive token error:', code || err.message);
+    if (err && err.code === '42703' && /drive_refresh_token/.test(err.message || '')) {
+      return res.status(503).json({ error: 'Supabase me latest schema.sql run karein (drive_refresh_token column missing hai).' });
+    }
+    if (code === 'redirect_uri_mismatch') {
+      return res.status(400).json({ error: 'Google OAuth me is website origin ko Authorized redirect URI me add karein.' });
+    }
+    if (code === 'invalid_client') {
+      return res.status(503).json({ error: 'Vercel GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET match nahi karte.' });
+    }
+    if (code === 'invalid_grant') {
+      return res.status(401).json({ error: 'Google authorization code expire ya use ho chuka hai. Allow Google Drive phir se dabayein.' });
+    }
+    if (err && /OAuth client credentials are not configured/.test(err.message || '')) {
+      return res.status(503).json({ error: 'Vercel me GOOGLE_CLIENT_ID aur GOOGLE_CLIENT_SECRET set karein.' });
+    }
+    const safeMessage = typeof providerError.error_description === 'string' ? providerError.error_description.slice(0, 240) : '';
+    return res.status(500).json({ error: safeMessage || 'Google Drive authorization server se complete nahi ho paayi.' });
   }
 }
