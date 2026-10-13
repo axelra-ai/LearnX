@@ -85,10 +85,13 @@ app Drive token silently renew karne ki koshish karega.
    | `DATABASE_URL` | Supabase transaction pooler connection string |
    | `JWT_SECRET` | koi bhi lamba random string (neeche kaise banaye) |
    | `GOOGLE_CLIENT_ID` | Required Google OAuth Client ID |
+   | `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth Web Client secret; server-only |
    | `SUPABASE_JWT_SECRET` | Supabase Project Settings → API ka legacy JWT secret; server-only |
 
-`SUPABASE_JWT_SECRET` ko kabhi `public/realtime-config.js` me mat daalna. Wahan
-sirf Supabase URL aur anon/public key honi chahiye.
+`SUPABASE_JWT_SECRET` aur `GOOGLE_CLIENT_SECRET` ko kabhi `public/realtime-config.js`
+me mat daalna. Wahan sirf Supabase URL aur anon/public key honi chahiye. Drive
+permission pehli baar code flow se grant hoti hai; encrypted refresh token
+server-side DB me store hota hai taaki har app launch par popup na aaye.
 
    `JWT_SECRET` banane ke liye terminal/PowerShell me:
    ```
