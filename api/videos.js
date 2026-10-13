@@ -263,6 +263,32 @@ export default async function handler(req, res) {
       return res.status(200).json({ uploadUrl });
     }
 
+    if (req.method === 'POST' && action === 'drive-upload-status') {
+      if (!requireUser(user, res)) return;
+      const { googleToken, uploadUrl, sizeBytes } = req.body || {};
+      const size = Number(sizeBytes);
+      let session;
+      try { session = new URL(String(uploadUrl || '')); } catch (e) { return res.status(400).json({ error: 'Drive upload session URL invalid hai.' }); }
+      if (!['www.googleapis.com', 'upload.googleapis.com'].includes(session.hostname) || !session.pathname.startsWith('/upload/drive/v3/files')) {
+        return res.status(400).json({ error: 'Drive upload session URL invalid hai.' });
+      }
+      if (typeof googleToken !== 'string' || googleToken.length > 4096 || !Number.isSafeInteger(size) || size < 1 || size > MAX_VIDEO_BYTES) {
+        return res.status(400).json({ error: 'Drive upload status request invalid hai.' });
+      }
+      const response = await fetch(session.toString(), {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + googleToken, 'Content-Range': 'bytes */' + size },
+        body: '',
+      });
+      if (response.status === 308) return res.status(200).json({ complete: false, range: response.headers.get('range') || '' });
+      if (response.status === 200 || response.status === 201) {
+        const file = await response.json();
+        return res.status(200).json({ complete: true, file });
+      }
+      const body = await response.json().catch(() => ({}));
+      return res.status(response.status >= 500 ? 502 : response.status).json({ error: body.error && body.error.message || 'Google Drive upload status verify nahi kar paaya.' });
+    }
+
     if (req.method === 'GET' && action === 'inbox') {
       if (!requireUser(user, res)) return;
       const inboxLimit = req.query.all === '1' ? 10000 : 500;
