@@ -3653,6 +3653,9 @@ function driveUploadRequest(uploadUrl, token, file, start, end, queryOnly = fals
 async function uploadDriveResumable(uploadUrl, token, file, onProgress) {
   const chunkSize = 8 * 1024 * 1024;
   let start = 0, retries = 0;
+  const queryStatus = () => apiFetch('/api/videos?action=drive-upload-status', {
+    method: 'POST', body: JSON.stringify({ googleToken: token, uploadUrl, sizeBytes: file.size })
+  });
   while (start < file.size) {
     const end = Math.min(start + chunkSize, file.size);
     try {
@@ -3669,15 +3672,15 @@ async function uploadDriveResumable(uploadUrl, token, file, onProgress) {
     } catch (error) {
       if (!error.network || retries >= 3) throw error;
       retries++;
-      const state = await driveUploadRequest(uploadUrl, token, file, 0, 0, true);
-      if (!state.incomplete) return state.data;
-      const accepted = state.range.match(/bytes=0-(\d+)/i);
+      const state = await queryStatus();
+      if (state.complete) return state.file;
+      const accepted = String(state.range || '').match(/bytes=0-(\d+)/i);
       start = accepted ? Number(accepted[1]) + 1 : 0;
       if (onProgress) onProgress(start / file.size);
     }
   }
-  const finalState = await driveUploadRequest(uploadUrl, token, file, 0, 0, true);
-  if (!finalState.incomplete) return finalState.data;
+  const finalState = await queryStatus();
+  if (finalState.complete) return finalState.file;
   throw new Error('Google Drive upload incomplete hai; retry karein.');
 }
 async function uploadOriginVideo() {
