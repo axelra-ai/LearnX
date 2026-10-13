@@ -123,19 +123,29 @@ messages save hote hain.
 
 1. Google Cloud Console me isi OAuth project ke liye **Google Drive API** enable
    karo. Existing `GOOGLE_CLIENT_ID` Origin Play ke liye bhi use hota hai.
-2. App upload ke waqt `drive.file` permission maangta hai. User ki Drive me
-   upload karne aur apne videos delete karne ke liye ye permission zaroori hai.
+2. Video upload ya profile photo save karte waqt app `drive.file` permission
+   maangta hai. User ki Drive me files upload/delete karne ke liye ye permission
+   zaroori hai.
 3. Public feed playback ke liye uploaded video par `Anyone with the link` ka
    viewer access set hota hai. Iska matlab video link public hai; private video
    uploads abhi supported nahi hain. Google Drive ki storage aur playback
    limits apply hoti hain. Upload size limit 2 GB hai.
-4. Existing database par updated `schema.sql` dobara run karo. Isse `videos`,
-   `video_follows`, aur `video_messages` tables add hongi; purana data delete
-   nahi hota.
+4. Existing database par updated `schema.sql` dobara run karo. Isse Origin Play
+   tables ke saath `video_presence` aur chat lookup index add honge; purana data
+   delete nahi hota.
 
 Upload karne wala user apne Profile → Videos tab se apni video delete kar sakta
 hai. Deletion database metadata ke saath uski Google Drive file bhi delete karti
 hai. `api/videos.js` video file ko server ya database se pass nahi karta.
+
+Direct messages database me rehte hain, taaki dono participants ko jaldi deliver
+hon. Active chat lagbhag har 2.2 seconds me refresh hoti hai; online/typing state
+short-lived database presence se aati hai. Chat delete karne par dono taraf ke
+messages delete hote hain. Profile photos `drive.file` permission se user ke
+Google Drive me upload hoti hain aur profile display ke liye `Anyone with the
+link` reader access leti hain. Photo content Drive me hai; database me sirf uska
+URL rehta hai. Purani database photo ko Drive me move karne ke liye nayi profile
+photo upload karein.
 
 ## AI identity aur formatting
 
