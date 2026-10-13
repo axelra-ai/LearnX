@@ -3626,23 +3626,59 @@ function openOriginUpload() {
 function closeOriginUpload() {
   const modal = document.getElementById('originUploadModal'); if (modal) modal.classList.remove('open');
 }
-function uploadDriveResumable(uploadUrl, token, file, onProgress) {
+function driveUploadRequest(uploadUrl, token, file, start, end, queryOnly = false, onProgress = null) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('PUT', uploadUrl);
+    request.timeout = 120000;
     request.setRequestHeader('Authorization', 'Bearer ' + token);
     request.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-    request.upload.onprogress = event => { if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total); };
+    request.setRequestHeader('Content-Range', queryOnly ? `bytes */${file.size}` : `bytes ${start}-${end - 1}/${file.size}`);
+    if (onProgress && !queryOnly) request.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress((start + Math.min(event.loaded, end - start)) / file.size);
+    };
     request.onload = () => {
       let data = {};
       try { data = JSON.parse(request.responseText || '{}'); } catch (e) {}
-      if (request.status >= 200 && request.status < 300) return resolve(data);
+      if (request.status === 308) return resolve({ incomplete: true, range: request.getResponseHeader('Range') || '', data });
+      if (request.status >= 200 && request.status < 300) return resolve({ incomplete: false, range: '', data });
       reject(new Error(data.error && data.error.message || `Google Drive upload failed (${request.status}).`));
     };
-    request.onerror = () => reject(new Error('Google Drive upload network/CORS error. Check Drive API, OAuth origin, and internet connection.'));
+    request.onerror = () => reject(Object.assign(new Error('Google Drive connection interrupted.'), { network: true }));
+    request.ontimeout = () => reject(Object.assign(new Error('Google Drive upload timed out.'), { network: true }));
     request.onabort = () => reject(new Error('Google Drive upload cancelled.'));
-    request.send(file);
+    request.send(queryOnly ? null : file.slice(start, end));
   });
+}
+async function uploadDriveResumable(uploadUrl, token, file, onProgress) {
+  const chunkSize = 8 * 1024 * 1024;
+  let start = 0, retries = 0;
+  while (start < file.size) {
+    const end = Math.min(start + chunkSize, file.size);
+    try {
+      const result = await driveUploadRequest(uploadUrl, token, file, start, end, false, onProgress);
+      if (!result.incomplete) return result.data;
+      const accepted = result.range.match(/bytes=0-(\d+)/i);
+      const nextStart = accepted ? Number(accepted[1]) + 1 : 0;
+      if (nextStart === start && nextStart < end) {
+        if (++retries > 3) throw new Error('Google Drive ne upload progress accept nahi ki.');
+        continue;
+      }
+      start = nextStart;
+      retries = 0;
+    } catch (error) {
+      if (!error.network || retries >= 3) throw error;
+      retries++;
+      const state = await driveUploadRequest(uploadUrl, token, file, 0, 0, true);
+      if (!state.incomplete) return state.data;
+      const accepted = state.range.match(/bytes=0-(\d+)/i);
+      start = accepted ? Number(accepted[1]) + 1 : 0;
+      if (onProgress) onProgress(start / file.size);
+    }
+  }
+  const finalState = await driveUploadRequest(uploadUrl, token, file, 0, 0, true);
+  if (!finalState.incomplete) return finalState.data;
+  throw new Error('Google Drive upload incomplete hai; retry karein.');
 }
 async function uploadOriginVideo() {
   const fileInput = document.getElementById('originVideoFile');
