@@ -6,12 +6,12 @@ Last updated: 12 October 2026
 LearnX ("we", "us") is a learning website with an AI chat assistant, available at learnxtech.vercel.app. This page explains what information we use and why.
 
 1. Information we collect
-Account details: your name and email address, and your profile picture if you add one. If you sign up with email, your password is stored only as a secure hash, never as plain text.
+Account details: your name and email address from Google, and your profile picture if you add one. Google sign-in and Google Drive access are required to use LearnX.
 Your content and activity: direct messages, AI chats, notes, flashcards, bookmarks, course progress, quiz scores, XP, streak and app settings.
 2. Google user data and Google Drive
-If you sign in with Google, LearnX may ask your permission to use the Google Drive "application data" folder (scope: drive.appdata). This is a hidden folder that only LearnX can open. We use it to save your personal LearnX data (including AI chats, notes, progress and settings) in your own Google Drive, so it stays with you and syncs between your devices.
+After Google sign-in, LearnX requires permission to use the Google Drive "application data" folder (scope: drive.appdata). This is a hidden folder that only LearnX can open. We use it to save your personal LearnX data (including AI chats, notes, progress and settings) in your own Google Drive, so it stays with you and syncs between your devices.
 
-If you add a profile photo, LearnX asks for Google Drive file access (scope: drive.file) and saves the image in your Drive. The photo is shared as "Anyone with the link" so it can appear in public profiles and chats. Direct messages and temporary online/typing status remain in the server database so they can be delivered quickly to both participants; deleting a conversation removes its messages from the database.
+If you add a profile photo, LearnX asks for Google Drive file access (scope: drive.file) and saves the image in your Drive. The photo is shared as "Anyone with the link" so it can appear in public profiles and chats. Direct-message files are stored in a Google Drive folder shared with both participants. Temporary online/typing status and small conversation references remain in the server database. Existing messages move to Drive after Drive permission is granted; the database copy is removed only after the Drive files are verified.
 
 We cannot see, open or change any other file in your Drive.
 We do not sell your Google user data, do not use it for advertising, and do not share it with others except as needed to run the features you use.
@@ -24,12 +24,12 @@ When you send a message to the AI assistant, the text (and any photo or file you
 4. Where your data is stored
 On your device (in your browser/app storage).
 In your Google Drive app-data folder, if you sign in with Google and allow it; profile photos are saved as Drive files when you add them.
-On our servers: account and shared-content metadata, direct messages, and short-lived online/typing status. Profile photo bytes are not stored on the server for new uploads.
+On our servers: account and shared-content metadata, small Drive conversation references, and short-lived online/typing status. New direct-message content and profile photo bytes are stored in Google Drive, not on the server.
 5. Your choices
 You can remove LearnX's access to your Drive at any time in your Google Account under Security → Your connections to third-party apps and services.
 You can delete your chats and notes inside the app, or ask us to delete your account by emailing the address below.
 6. Security
-We use HTTPS and store passwords as hashes. No online service is 100% secure, so please keep your account safe.
+We use HTTPS and Google sign-in. No online service is 100% secure, so please keep your Google account safe.
 
 7. Changes
 We may update this policy and will change the date at the top when we do.
