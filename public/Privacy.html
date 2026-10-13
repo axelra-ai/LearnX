@@ -11,7 +11,7 @@ Your content and activity: direct messages, AI chats, notes, flashcards, bookmar
 2. Google user data and Google Drive
 After Google sign-in, LearnX requires permission to use the Google Drive "application data" folder (scope: drive.appdata). This is a hidden folder that only LearnX can open. We use it to save your personal LearnX data (including AI chats, notes, progress and settings) in your own Google Drive, so it stays with you and syncs between your devices.
 
-If you add a profile photo, LearnX asks for Google Drive file access (scope: drive.file) and saves the image in your Drive. The photo is shared as "Anyone with the link" so it can appear in public profiles and chats. Direct-message files are stored in a Google Drive folder shared with both participants. Temporary online/typing status and small conversation references remain in the server database. Existing messages move to Drive after Drive permission is granted; the database copy is removed only after the Drive files are verified.
+If you add a profile photo, LearnX asks for Google Drive file access (scope: drive.file) and saves the image in your Drive. The photo is shared as "Anyone with the link" so it can appear in public profiles and chats. Direct-message files are stored in a Google Drive folder shared with both participants. Temporary online/typing status and small conversation references remain in the server database. An encrypted Google Drive refresh token is also stored server-side so you do not need to grant access on every launch. Existing messages move to Drive after Drive permission is granted; the database copy is removed only after the Drive files are verified.
 
 We cannot see, open or change any other file in your Drive.
 We do not sell your Google user data, do not use it for advertising, and do not share it with others except as needed to run the features you use.
@@ -24,7 +24,7 @@ When you send a message to the AI assistant, the text (and any photo or file you
 4. Where your data is stored
 On your device (in your browser/app storage).
 In your Google Drive app-data folder, if you sign in with Google and allow it; profile photos are saved as Drive files when you add them.
-On our servers: account and shared-content metadata, small Drive conversation references, and short-lived online/typing status. New direct-message content and profile photo bytes are stored in Google Drive, not on the server.
+On our servers: account and shared-content metadata, small Drive conversation references, short-lived online/typing status, and an encrypted Drive refresh token. New direct-message content and profile photo bytes are stored in Google Drive, not on the server.
 5. Your choices
 You can remove LearnX's access to your Drive at any time in your Google Account under Security → Your connections to third-party apps and services.
 You can delete your chats and notes inside the app, or ask us to delete your account by emailing the address below.
