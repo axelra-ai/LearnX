@@ -83,3 +83,6 @@ create table if not exists video_messages (
   check (sender_id <> recipient_id)
 );
 create index if not exists idx_video_messages_pair on video_messages(sender_id, recipient_id, created_at desc);
+
+-- Profile picture: chhoti JPEG (client 256x256 me resize karke bhejta hai, ~20KB)
+alter table users add column if not exists avatar_data bytea;
