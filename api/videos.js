@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   const action = req.query.action || (req.body && req.body.action);
 
   try {
-    // ---- Profile picture (chhoti JPEG, ~20KB, DB me; video ki tarah Drive me nahi) ----
+    // Legacy profile photos remain until users replace or remove them.
     // Public GET: <img> tag Authorization header nahi bhej sakta, isliye login zaroori nahi.
     if (req.method === 'GET' && action === 'avatar') {
       const id = String(req.query.id || '');
@@ -32,18 +32,21 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST' && action === 'set-avatar') {
       if (!requireUser(user, res)) return;
-      const image = String((req.body && req.body.image) || '');
-      const prefix = 'data:image/jpeg;base64,';
-      if (!image.startsWith(prefix) || image.length > 140000) {
-        return res.status(400).json({ error: 'Photo sahi format ya size ki nahi hai.' });
+      const { driveFileId, googleToken } = req.body || {};
+      if (typeof driveFileId !== 'string' || !/^[a-zA-Z0-9_-]{10,200}$/.test(driveFileId) || typeof googleToken !== 'string' || googleToken.length > 4096) {
+        return res.status(400).json({ error: 'Google Drive photo details sahi nahi hain.' });
       }
-      const buf = Buffer.from(image.slice(prefix.length), 'base64');
-      // JPEG ke pehle 3 bytes: FF D8 FF  |  max 90 KB
-      if (buf.length < 200 || buf.length > 90 * 1024 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) {
-        return res.status(400).json({ error: 'Photo valid JPEG nahi hai.' });
+      const response = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(driveFileId) + '?fields=id,mimeType,size,ownedByMe,permissions(type,role)', {
+        headers: { Authorization: 'Bearer ' + googleToken },
+      });
+      if (!response.ok) return res.status(403).json({ error: 'Google Drive photo verify nahi ho paayi.' });
+      const file = await response.json();
+      const publicImage = (file.permissions || []).some(permission => permission.type === 'anyone' && permission.role === 'reader');
+      if (!file.ownedByMe || file.mimeType !== 'image/jpeg' || Number(file.size) > 90 * 1024 || !publicImage) {
+        return res.status(403).json({ error: 'Photo aapki Drive ki public JPEG file nahi hai.' });
       }
-      const url = '/api/videos?action=avatar&id=' + user.uid + '&v=' + Date.now();
-      await sql`update users set avatar_data = ${buf}, avatar_url = ${url} where id = ${user.uid}`;
+      const url = 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(driveFileId);
+      await sql`update users set avatar_data = null, avatar_url = ${url} where id = ${user.uid}`;
       return res.status(200).json({ avatarUrl: url });
     }
 
@@ -51,6 +54,18 @@ export default async function handler(req, res) {
       if (!requireUser(user, res)) return;
       await sql`update users set avatar_data = null, avatar_url = null where id = ${user.uid}`;
       return res.status(200).json({ avatarUrl: '' });
+    }
+
+    if (req.method === 'POST' && action === 'presence') {
+      if (!requireUser(user, res)) return;
+      const online = !(req.body && req.body.online === false);
+      await sql`
+        insert into video_presence (user_id, last_seen, typing_to, typing_until)
+        values (${user.uid}, ${online ? new Date() : new Date(Date.now() - 60000)}, null, null)
+        on conflict (user_id) do update set
+          last_seen = excluded.last_seen, typing_to = null, typing_until = null
+      `;
+      return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'GET' && action === 'feed') {
@@ -133,6 +148,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ messages: rows.reverse() });
     }
 
+    if (req.method === 'GET' && action === 'presence') {
+      if (!requireUser(user, res)) return;
+      const otherId = String(req.query.with || '');
+      if (!UUID_RE.test(otherId) || otherId === user.uid) return res.status(400).json({ error: 'Chat user valid nahi hai.' });
+      const relationship = await sql`
+        select 1 where exists(select 1 from video_follows where user_id = ${user.uid} and channel_id = ${otherId})
+          or exists(select 1 from video_follows where user_id = ${otherId} and channel_id = ${user.uid})
+      `;
+      if (!relationship.length) return res.status(403).json({ error: 'Is chat ke liye channel follow hona chahiye.' });
+      const rows = await sql`
+        select
+          coalesce(last_seen > now() - interval '45 seconds', false) as "isOnline",
+          coalesce(typing_to = ${user.uid} and typing_until > now(), false) as "isTyping"
+        from video_presence where user_id = ${otherId}
+      `;
+      return res.status(200).json(rows[0] || { isOnline: false, isTyping: false });
+    }
+
     if (req.method === 'POST' && action === 'drive-init') {
       if (!requireUser(user, res)) return;
       const { googleToken, title, description = '', mimeType, sizeBytes } = req.body || {};
@@ -165,7 +198,9 @@ export default async function handler(req, res) {
       const rows = await sql`
         select conversation.* from (
           select distinct on (thread.other_id) thread.other_id as "channelId", u.name as "channelName",
-            u.avatar_url as "avatarUrl", thread.sender_id as "senderId", thread.message, thread.created_at as "createdAt"
+            u.avatar_url as "avatarUrl", thread.sender_id as "senderId", thread.message, thread.created_at as "createdAt",
+            exists(select 1 from video_presence p where p.user_id = thread.other_id and p.last_seen > now() - interval '45 seconds') as "isOnline",
+            exists(select 1 from video_presence p where p.user_id = thread.other_id and p.typing_to = ${user.uid} and p.typing_until > now()) as "isTyping"
           from (
             select case when sender_id = ${user.uid} then recipient_id else sender_id end as other_id,
               sender_id, message, created_at
@@ -241,6 +276,14 @@ export default async function handler(req, res) {
         returning id, sender_id as "senderId", recipient_id as "recipientId", message, created_at as "createdAt"
       `;
       return res.status(201).json({ message: rows[0] });
+    }
+
+    if (req.method === 'DELETE' && action === 'conversation') {
+      if (!requireUser(user, res)) return;
+      const otherId = String(req.query.with || '');
+      if (!UUID_RE.test(otherId) || otherId === user.uid) return res.status(400).json({ error: 'Chat user valid nahi hai.' });
+      await sql`delete from video_messages where (sender_id = ${user.uid} and recipient_id = ${otherId}) or (sender_id = ${otherId} and recipient_id = ${user.uid})`;
+      return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'POST' && action === 'view') {
