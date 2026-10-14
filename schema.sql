@@ -99,11 +99,19 @@ create table if not exists video_conversations (
   participant_one_id uuid not null references users(id) on delete cascade,
   participant_two_id uuid not null references users(id) on delete cascade,
   drive_folder_id text not null unique,
+  last_message_preview varchar(160),
+  last_sender_id uuid references users(id) on delete set null,
+  last_read_one_at timestamptz,
+  last_read_two_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (participant_one_id < participant_two_id),
   unique (participant_one_id, participant_two_id)
 );
+alter table video_conversations add column if not exists last_message_preview varchar(160);
+alter table video_conversations add column if not exists last_sender_id uuid references users(id) on delete set null;
+alter table video_conversations add column if not exists last_read_one_at timestamptz;
+alter table video_conversations add column if not exists last_read_two_at timestamptz;
 create index if not exists idx_video_conversations_one on video_conversations(participant_one_id, updated_at desc);
 create index if not exists idx_video_conversations_two on video_conversations(participant_two_id, updated_at desc);
 
