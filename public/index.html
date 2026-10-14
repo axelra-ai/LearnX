@@ -2743,9 +2743,9 @@ function originAvatarHTML(channel) {
 function originVideoCardHTML(video, owner = false) {
   Origin.videos.set(video.id, video);
   const driveId = encodeURIComponent(video.driveFileId);
-  return `<article class="origin-video">
-    <div class="origin-thumb"><img src="https://drive.google.com/thumbnail?id=${driveId}&sz=w640" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.stopPropagation(); originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
-    <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
+  return `<article class="origin-video" onclick="event.preventDefault(); event.stopPropagation(); return false;">
+    <div class="origin-thumb" onclick="event.preventDefault(); event.stopPropagation(); return false;"><img src="https://drive.google.com/thumbnail?id=${driveId}&sz=w640" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-video-body" onclick="event.preventDefault(); event.stopPropagation(); return false;"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
       ${owner ? `<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-danger btn-sm" onclick="deleteOriginVideo('${esc(video.id)}')" type="button"><i data-lucide="trash-2"></i>Delete</button></div>` : ''}
