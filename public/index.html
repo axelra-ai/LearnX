@@ -2761,7 +2761,8 @@ async function loadOriginFeed(containerId = 'originFeed', limit = 40, sort = 'la
     const videos = (data.videos || []).slice(0, limit);
     el.innerHTML = videos.length ? videos.map(v => originVideoCardHTML(v)).join('') : '<div class="empty-state"><i data-lucide="video"></i><h3>Abhi videos nahi hain</h3><p>Apna pehla video Origin Play par upload karein.</p></div>';
   } catch (e) {
-    el.innerHTML = '<div class="empty-state"><i data-lucide="cloud-off"></i><h3>Videos load nahi ho paaye</h3><p>Database migration apply hone ke baad feed dikhegi.</p></div>';
+    console.error('Origin feed error:', e);
+    el.innerHTML = '<div class="empty-state"><i data-lucide="cloud-off"></i><h3>Videos load nahi ho paaye</h3><p>Thodi der baad refresh karke dobara try karein. Agar problem rahe to Supabase me schema.sql dobara run karein.</p></div>';
   }
   lucide.createIcons();
 }
@@ -3846,7 +3847,8 @@ async function uploadOriginVideo() {
   } catch (e) {
     if (createdDriveId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdDriveId), { method: 'DELETE' }); } catch (cleanupError) {} }
     if (createdThumbId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdThumbId), { method: 'DELETE' }); } catch (cleanupError) {} }
-    status.textContent = e.message || 'Upload complete nahi hua.';
+    console.error('Origin upload error:', e);
+    status.textContent = (e.data && e.data.error) || e.message || 'Upload complete nahi hua.';
   } finally { button.disabled = false; }
 }
 async function deleteOriginVideo(videoId) {
