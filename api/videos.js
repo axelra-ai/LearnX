@@ -597,7 +597,7 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method ya action valid nahi hai.' });
   } catch (err) {
-    console.error('Videos API error:', err);
+    console.error('Videos API error:', action, err && err.message, err);
     return res.status(500).json({ error: 'Video request poori nahi ho paayi.' });
   }
 }
