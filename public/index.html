@@ -2324,8 +2324,14 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
 </div>
 <div class="modal-overlay" id="originWatchModal" onclick="if(event.target===this)closeOriginWatch()">
   <div class="modal" style="max-width:900px;padding:18px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px"><h3 id="originWatchTitle"></h3><button class="btn-icon" onclick="closeOriginWatch()" title="Close video" type="button"><i data-lucide="x"></i></button></div>
-    <iframe class="origin-watch-frame" id="originWatchFrame" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Origin Play video"></iframe>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px">
+      <h3 id="originWatchTitle"></h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-icon" id="originFullscreenBtn" onclick="toggleOriginFullscreen()" title="Toggle fullscreen" type="button"><i data-lucide="maximize-2"></i></button>
+        <button class="btn-icon" onclick="closeOriginWatch()" title="Close video" type="button"><i data-lucide="x"></i></button>
+      </div>
+    </div>
+    <iframe class="origin-watch-frame" id="originWatchFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Origin Play video"></iframe>
   </div>
 </div>
 
@@ -2738,7 +2744,7 @@ function originVideoCardHTML(video, owner = false) {
   Origin.videos.set(video.id, video);
   const driveId = encodeURIComponent(video.driveFileId);
   return `<article class="origin-video">
-    <div class="origin-thumb"><img src="https://drive.google.com/thumbnail?id=${driveId}&sz=w640" alt="" loading="lazy" onerror="this.style.display='none'"><button class="origin-play" onclick="originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-thumb"><img src="https://drive.google.com/thumbnail?id=${driveId}&sz=w640" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.stopPropagation(); originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
     <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
@@ -3659,7 +3665,29 @@ function closeOriginWatch() {
   const modal = document.getElementById('originWatchModal');
   if (modal) modal.classList.remove('open');
   const frame = document.getElementById('originWatchFrame'); if (frame) frame.src = '';
+  const fullscreenBtn = document.getElementById('originFullscreenBtn');
+  if (fullscreenBtn) fullscreenBtn.innerHTML = '<i data-lucide="maximize-2"></i>';
+  lucide.createIcons();
 }
+function toggleOriginFullscreen() {
+  const frame = document.getElementById('originWatchFrame');
+  const fullscreenBtn = document.getElementById('originFullscreenBtn');
+  if (!frame || !fullscreenBtn) return;
+  if (!document.fullscreenElement && frame.requestFullscreen) {
+    frame.requestFullscreen().catch(() => {});
+    fullscreenBtn.innerHTML = '<i data-lucide="minimize-2"></i>';
+  } else if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+    fullscreenBtn.innerHTML = '<i data-lucide="maximize-2"></i>';
+  }
+  lucide.createIcons();
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('originFullscreenBtn');
+  if (!btn) return;
+  btn.innerHTML = document.fullscreenElement ? '<i data-lucide="minimize-2"></i>' : '<i data-lucide="maximize-2"></i>';
+  lucide.createIcons();
+});
 async function originLoadMine(container) {
   if (!getToken()) { container.innerHTML = '<div class="empty-state"><p>Apne videos dekhne ke liye login karein.</p></div>'; return; }
   try {
