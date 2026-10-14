@@ -1544,6 +1544,7 @@ html[data-theme] body .origin-chat-layout{grid-template-columns:minmax(300px,380
 .ig-row.me:not(.last) .ig-msg{border-bottom-right-radius:6px}
 .ig-msg.emoji{background:none!important;font-size:42px;line-height:1.15;padding:0 4px}
 .ig-msg.pending{opacity:.55}
+.ig-receipt{align-self:flex-end;margin:2px 8px 0;color:var(--text-dimmer);font-size:10px;line-height:1}
 .ig-compose{padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--bg)}
 .ig-pill{display:flex;align-items:center;gap:6px;min-height:46px;padding:0 6px 0 18px;border-radius:100px;border:1px solid var(--border-2);background:var(--surface)}
 .ig-pill:focus-within{border-color:var(--accent)}
@@ -2860,7 +2861,11 @@ async function loadOriginChats() {
     Origin.chats = data.conversations || [];
     if (Origin.activeChat) {
       const active = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
-      if (active) Object.assign(Origin.activeChat, active);
+      if (active) {
+        const seenChanged = Origin.activeChat.isSeen !== active.isSeen;
+        Object.assign(Origin.activeChat, active);
+        if (seenChanged) renderIgThread(false);
+      }
       updateOriginThreadStatus();
     }
     renderOriginChats();
@@ -3045,8 +3050,9 @@ async function sendDriveChatMessage(channelId, message, tokenPromise = null, cha
   }
   try {
     await uploadDriveChatMessage(conversation.driveFolderId, record, conversation.knownIds);
-    apiFetch('/api/videos?action=conversation-activity', { method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId }) })
-      .catch(error => console.warn('Chat activity update failed after Drive save:', error));
+    try { await apiFetch('/api/videos?action=conversation-activity', {
+      method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId, messagePreview: message, senderId: State.user.id })
+    }); } catch (error) { console.warn('Chat activity update failed after Drive save:', error); }
     if (realtimeSent) { try { await sendOriginRealtime('message-saved', { id, driveFileId: record.driveFileId }); } catch (e) {} }
     return record;
   } catch (error) {
@@ -3078,12 +3084,18 @@ function handleOriginRealtimeEvent(event, payload) {
   } else if (event === 'message' && existingIndex < 0) {
     Origin.threadMsgs.push(Object.assign({}, payload, { pending: true }));
     Origin.threadMsgs.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    markDriveConversationRead(Origin.activeChatId);
   }
   if (Origin.activeChatId) {
-    const last = Origin.threadMsgs[Origin.threadMsgs.length - 1];
-    if (last) {
-      const inbox = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
-      if (inbox) Object.assign(inbox, { message: last.message, senderId: last.senderId, createdAt: last.createdAt });
+    const activeThread = (Origin.threadMsgs || []).filter(message => message && message.id);
+    const last = activeThread[activeThread.length - 1];
+    const inbox = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
+    if (inbox) {
+      if (last) {
+        Object.assign(inbox, { message: last.message, senderId: last.senderId, createdAt: last.createdAt, isSeen: last.senderId === (State.user && State.user.id), isUnread: last.senderId !== (State.user && State.user.id) });
+      } else {
+        Object.assign(inbox, { message: 'Open to view messages', senderId: null, createdAt: new Date().toISOString(), isSeen: false, isUnread: false });
+      }
     }
     Origin.threadSig = '';
     renderIgThread(true); renderOriginChats();
@@ -3133,6 +3145,20 @@ async function closeOriginRealtime() {
   clearInterval(ChatRealtime.refreshTimer); ChatRealtime.refreshTimer = null;
   if (ChatRealtime.channel && ChatRealtime.client) await ChatRealtime.client.removeChannel(ChatRealtime.channel);
   ChatRealtime.channel = null; ChatRealtime.topic = null; ChatRealtime.status = 'closed';
+}
+async function markDriveConversationRead(channelId) {
+  const conversationId = Origin.activeChat && Origin.activeChat.conversationId;
+  const messages = Origin.threadMsgs || [];
+  const latest = messages[messages.length - 1];
+  if (!channelId || !conversationId || !latest || latest.senderId === (State.user && State.user.id)) return;
+  const readKey = conversationId + ':' + latest.id;
+  if (Origin.lastReadMessageId === readKey) return;
+  Origin.lastReadMessageId = readKey;
+  const inbox = Origin.chats.find(chat => chat.channelId === channelId);
+  if (inbox) inbox.isUnread = false;
+  renderOriginChats();
+  apiFetch('/api/videos?action=conversation-read', { method: 'POST', body: JSON.stringify({ conversationId }) })
+    .catch(error => console.warn('Chat read receipt failed:', error));
 }
 function closeAvatarModal() { document.getElementById('avatarModal').classList.remove('open'); Avatar.img = null; }
 function avatarClamp() {
@@ -3251,6 +3277,7 @@ function chatMarkRead(id) { try { localStorage.setItem(chatReadKey(id), String(D
 function chatIsUnread(c) {
   if (!c || c.senderId !== c.channelId) return false; // last message meri hai
   if (Origin.activeChatId === c.channelId && currentPage === 'originChat') return false;
+  if (typeof c.isUnread === 'boolean') return c.isUnread;
   let r = 0; try { r = Number(localStorage.getItem(chatReadKey(c.channelId)) || 0); } catch (e) {}
   return new Date(c.createdAt).getTime() > r;
 }
@@ -3290,7 +3317,7 @@ function renderOriginChats() {
       <span class="origin-avatar-wrap">${originAvatarHTML(chat)}<i class="origin-presence-dot ${chat.isOnline ? 'online' : ''}"></i></span>
       <span class="origin-conversation-copy">
         <span class="origin-conversation-top"><b>${esc(chat.channelName)}</b><time>${esc(chatListTime(new Date(chat.createdAt).getTime()))}</time></span>
-        <span class="origin-conversation-preview">${mine ? '<i data-lucide="check-check" class="wa-ticks"></i>' : ''}<span class="wa-text">${chat.isTyping ? '<i>typing...</i>' : esc(chat.message)}</span>${unread ? '<span class="wa-dot"></span>' : ''}</span>
+        <span class="origin-conversation-preview">${mine ? `<i data-lucide="${chat.isSeen ? 'check-check' : 'check'}" class="wa-ticks ${chat.isSeen ? 'seen' : ''}" title="${chat.isSeen ? 'Seen' : 'Sent'}"></i>` : ''}<span class="wa-text">${chat.isTyping ? '<i>typing...</i>' : esc(chat.message)}</span>${unread ? '<span class="wa-dot"></span>' : ''}</span>
       </span></button>`;
   }).join('');
   list.scrollTop = scroll;
@@ -3472,7 +3499,15 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     const latestMessage = Origin.threadMsgs[Origin.threadMsgs.length - 1];
     const inboxItem = Origin.chats.find(chat => chat.channelId === channelId);
-    if (latestMessage && inboxItem) Object.assign(inboxItem, { message: latestMessage.message, senderId: latestMessage.senderId, createdAt: latestMessage.createdAt });
+    if (latestMessage && inboxItem) {
+      const needsPreview = inboxItem.message !== latestMessage.message || inboxItem.senderId !== latestMessage.senderId;
+      Object.assign(inboxItem, { message: latestMessage.message, senderId: latestMessage.senderId, createdAt: latestMessage.createdAt });
+      if (data.conversationId && needsPreview) {
+        apiFetch('/api/videos?action=conversation-preview', {
+          method: 'POST', body: JSON.stringify({ conversationId: data.conversationId, messagePreview: latestMessage.message, senderId: latestMessage.senderId, messageCreatedAt: latestMessage.createdAt })
+        }).catch(() => {});
+      }
+    }
     const migrateButton = document.getElementById('originMigrateButton');
     if (migrateButton) migrateButton.style.display = (data.messages || []).length ? '' : 'none';
     Origin.pending = (Origin.pending || []).filter(p => !p.sent);
@@ -3481,6 +3516,7 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
     chatMarkRead(channelId);
     if (force || sig !== Origin.threadSig) { Origin.threadSig = sig; renderIgThread(!!force); }
     renderOriginChats();
+    markDriveConversationRead(channelId);
     if ((data.messages || []).length && driveTokenPromise && !Origin.migratingChats.has(channelId)) {
       Origin.migratingChats.add(channelId);
       Promise.resolve(driveTokenPromise)
@@ -3519,11 +3555,24 @@ async function migrateAllDriveChats() {
     if (!token) throw new Error('Google Drive permission allow karein.');
     const data = await apiFetch('/api/videos?action=inbox&all=1');
     const legacy = (data.conversations || []).filter(chat => !chat.driveFolderId);
+    const driveChats = (data.conversations || []).filter(chat => chat.driveFolderId);
     for (let index = 0; index < legacy.length; index++) {
       const chat = legacy[index];
       const source = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(chat.channelId));
       await migrateDriveConversation(chat.channelId, chat.channelName, source, Promise.resolve(token));
       if (button) button.title = `Moving old chats to Google Drive (${index + 1}/${legacy.length})`;
+    }
+    for (let index = 0; index < driveChats.length; index++) {
+      const chat = driveChats[index];
+      const source = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(chat.channelId));
+      const messages = await listDriveChatMessages(chat.driveFolderId);
+      const latest = messages[messages.length - 1];
+      if (latest) {
+        await apiFetch('/api/videos?action=conversation-preview', {
+          method: 'POST', body: JSON.stringify({ conversationId: source.conversationId, messagePreview: latest.message, senderId: latest.senderId, messageCreatedAt: latest.createdAt })
+        });
+      }
+      if (button) button.title = `Updating chat previews (${index + 1}/${driveChats.length})`;
     }
     await loadOriginChats();
     showToast(legacy.length ? 'Purani chats Google Drive me move ho gayi' : 'Koi purani chat migrate karni nahi hai', 'cloud-check');
@@ -3545,7 +3594,7 @@ function renderIgThread(stick) {
     const first = sepBefore(i) || list[i - 1].senderId !== m.senderId;
     const last = i === list.length - 1 || sepBefore(i + 1) || list[i + 1].senderId !== m.senderId;
     const emoji = CHAT_EMOJI_RE.test(m.message);
-    html += `<div class="ig-row ${mine ? 'me' : 'them'} ${first ? 'first' : ''} ${last ? 'last' : ''}">${mine ? '' : `<span class="ig-av">${last ? originAvatarHTML({ name: chat.name, avatarUrl: chat.avatarUrl }) : ''}</span>`}<div class="ig-msg ${emoji ? 'emoji' : ''} ${m.pending ? 'pending' : ''}" data-message-id="${originAttr(m.id)}" title="Long-press to delete · ${originAttr(new Date(T(m)).toLocaleString('en-IN'))}">${esc(m.message)}</div></div>`;
+    html += `<div class="ig-row ${mine ? 'me' : 'them'} ${first ? 'first' : ''} ${last ? 'last' : ''}">${mine ? '' : `<span class="ig-av">${last ? originAvatarHTML({ name: chat.name, avatarUrl: chat.avatarUrl }) : ''}</span>`}<div class="ig-msg ${emoji ? 'emoji' : ''} ${m.pending ? 'pending' : ''}" data-message-id="${originAttr(m.id)}" title="Long-press to delete · ${originAttr(new Date(T(m)).toLocaleString('en-IN'))}">${esc(m.message)}</div>${mine && i === list.length - 1 ? `<small class="ig-receipt">${chat.isSeen ? 'Seen' : 'Sent'}</small>` : ''}</div>`;
   });
   el.innerHTML = html;
   if (stick || nearBottom) el.scrollTop = el.scrollHeight;
@@ -3560,10 +3609,11 @@ function sendOriginChatMessage(event, forced) {
   if (input && !forced) { input.value = ''; igComposeChanged(); input.focus(); }
   const now = new Date().toISOString();
   const tmp = { id: 'tmp' + Date.now(), senderId: State.user && State.user.id, message, createdAt: now, pending: true };
+  if (Origin.activeChat) Origin.activeChat.isSeen = false;
   (Origin.pending = Origin.pending || []).push(tmp);
   renderIgThread(true);
   const chat = Origin.chats.find(item => item.channelId === channelId);
-  if (chat) { chat.message = message; chat.senderId = State.user && State.user.id; chat.createdAt = now; }
+  if (chat) { chat.message = message; chat.senderId = State.user && State.user.id; chat.createdAt = now; chat.isSeen = false; chat.isUnread = false; }
   else if (Origin.activeChat) Origin.chats.push({ channelId, channelName: Origin.activeChat.name, avatarUrl: Origin.activeChat.avatarUrl, senderId: State.user && State.user.id, message, createdAt: now });
   renderOriginChats();
   sendDriveChatMessage(channelId, message, driveTokenPromise, Origin.activeChat && Origin.activeChat.name)
