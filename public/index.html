@@ -2316,6 +2316,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
     <p class="modal-sub">Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.</p>
     <div class="field"><label class="field-label" for="originVideoTitle">Video title</label><input type="text" class="field-input" id="originVideoTitle" maxlength="160" placeholder="Video ka naam"></div>
     <div class="field"><label class="field-label" for="originVideoDescription">Description</label><textarea class="field-input" id="originVideoDescription" maxlength="2000" rows="3" placeholder="Video ke baare me"></textarea></div>
+    <div class="field"><label class="field-label" for="originVideoThumb">Thumbnail (optional)</label><input type="file" class="field-input" id="originVideoThumb" accept="image/*"></div>
     <div class="field"><label class="field-label" for="originVideoFile">Video file (max 2 GB)</label><input type="file" class="field-input" id="originVideoFile" accept="video/*"></div>
     <div id="originUploadStatus" class="modal-sub" aria-live="polite"></div>
     <div class="origin-progress" id="originUploadProgress" hidden><span id="originUploadProgressBar"></span></div>
@@ -2742,10 +2743,12 @@ function originAvatarHTML(channel) {
 }
 function originVideoCardHTML(video, owner = false) {
   Origin.videos.set(video.id, video);
-  const driveId = encodeURIComponent(video.driveFileId);
-  return `<article class="origin-video" onclick="event.preventDefault(); event.stopPropagation(); return false;">
-    <div class="origin-thumb" onclick="event.preventDefault(); event.stopPropagation(); return false;"><img src="https://drive.google.com/thumbnail?id=${driveId}&sz=w640" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
-    <div class="origin-video-body" onclick="event.preventDefault(); event.stopPropagation(); return false;"><div class="origin-video-title">${esc(video.title)}</div>
+  const thumbId = video.thumbnailFileId || video.driveFileId;
+  const driveId = encodeURIComponent(thumbId || video.driveFileId || '');
+  const thumbUrl = thumbId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w640` : `https://drive.google.com/thumbnail?id=${encodeURIComponent(video.driveFileId)}&sz=w640`;
+  return `<article class="origin-video" aria-label="${originAttr(video.title)}">
+    <div class="origin-thumb"><img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
       ${owner ? `<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-danger btn-sm" onclick="deleteOriginVideo('${esc(video.id)}')" type="button"><i data-lucide="trash-2"></i>Delete</button></div>` : ''}
@@ -3669,6 +3672,14 @@ function closeOriginWatch() {
   if (fullscreenBtn) fullscreenBtn.innerHTML = '<i data-lucide="maximize-2"></i>';
   lucide.createIcons();
 }
+document.addEventListener('click', function (event) {
+  const playButton = event.target.closest('.origin-play');
+  if (playButton) return;
+  if (event.target.closest('.origin-video')) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+});
 function toggleOriginFullscreen() {
   const frame = document.getElementById('originWatchFrame');
   const fullscreenBtn = document.getElementById('originFullscreenBtn');
@@ -3763,8 +3774,31 @@ async function uploadDriveResumable(uploadUrl, token, file, onProgress) {
   if (finalState.complete) return finalState.file;
   throw new Error('Google Drive upload incomplete hai; retry karein.');
 }
+async function uploadOptionalThumbnail(token, file) {
+  if (!file) return null;
+  if (!file.type.startsWith('image/')) throw new Error('Thumbnail sirf image file hona chahiye.');
+  if (file.size > 5 * 1024 * 1024) throw new Error('Thumbnail 5 MB se chhota hona chahiye.');
+  const boundary = 'learnxthumb' + Date.now().toString(36);
+  const metadata = JSON.stringify({ name: 'learnx-thumb-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + (file.type.includes('png') ? 'png' : 'jpg'), mimeType: file.type });
+  const arrayBuffer = await file.arrayBuffer();
+  const body = new Blob([
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + metadata + '\r\n',
+    '--' + boundary + '\r\nContent-Type: ' + (file.type || 'image/jpeg') + '\r\n\r\n',
+    arrayBuffer,
+    '\r\n--' + boundary + '--'
+  ], { type: 'multipart/related; boundary=' + boundary });
+  const response = await originDriveRequest('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body
+  });
+  const created = await response.json();
+  await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(created.id) + '/permissions?fields=id', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' })
+  });
+  return created.id;
+}
 async function uploadOriginVideo() {
   const fileInput = document.getElementById('originVideoFile');
+  const thumbInput = document.getElementById('originVideoThumb');
   const titleInput = document.getElementById('originVideoTitle');
   const descriptionInput = document.getElementById('originVideoDescription');
   const status = document.getElementById('originUploadStatus');
@@ -3772,12 +3806,14 @@ async function uploadOriginVideo() {
   const progress = document.getElementById('originUploadProgress');
   const progressBar = document.getElementById('originUploadProgressBar');
   const file = fileInput.files[0];
+  const thumbFile = thumbInput && thumbInput.files && thumbInput.files[0];
   const title = titleInput.value.trim();
   if (!title || !file) { status.textContent = 'Title aur video file select karein.'; return; }
   if (!file.type.startsWith('video/')) { status.textContent = 'Sahi video file select karein.'; return; }
   if (file.size > ORIGIN_MAX_BYTES) { status.textContent = 'Video 2 GB se chhoti honi chahiye.'; return; }
   button.disabled = true; progress.hidden = false; progressBar.style.width = '4%';
   let createdDriveId = null;
+  let createdThumbId = null;
   try {
     status.textContent = 'Google Drive permission ka intezar...';
     const token = await originDriveToken();
@@ -3794,16 +3830,22 @@ async function uploadOriginVideo() {
     await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdDriveId) + '/permissions?fields=id', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'reader', type: 'anyone' })
     });
+    if (thumbFile) {
+      progressBar.style.width = '90%';
+      status.textContent = 'Thumbnail upload ho raha hai...';
+      createdThumbId = await uploadOptionalThumbnail(token, thumbFile);
+    }
     progressBar.style.width = '94%'; status.textContent = 'Origin Play par publish ho raha hai...';
-    await apiFetch('/api/videos?action=publish', { method: 'POST', body: JSON.stringify({ title, description: descriptionInput.value.trim(), driveFileId: createdDriveId, mimeType: file.type, sizeBytes: file.size, googleToken: token }) });
+    await apiFetch('/api/videos?action=publish', { method: 'POST', body: JSON.stringify({ title, description: descriptionInput.value.trim(), driveFileId: createdDriveId, mimeType: file.type, sizeBytes: file.size, googleToken: token, thumbnailFileId: createdThumbId || null }) });
     progressBar.style.width = '100%';
     showToast('Video Origin Play par upload ho gaya', 'circle-play');
-    closeOriginUpload(); fileInput.value = ''; titleInput.value = ''; descriptionInput.value = '';
+    closeOriginUpload(); fileInput.value = ''; thumbInput.value = ''; titleInput.value = ''; descriptionInput.value = '';
     if (currentPage === 'origin') loadOriginPage();
     if (currentPage === 'profile' && State._profileTab === 'videos') renderProfileTab('videos');
     loadOriginFeed('homeOriginFeed', 3);
   } catch (e) {
     if (createdDriveId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdDriveId), { method: 'DELETE' }); } catch (cleanupError) {} }
+    if (createdThumbId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdThumbId), { method: 'DELETE' }); } catch (cleanupError) {} }
     status.textContent = e.message || 'Upload complete nahi hua.';
   } finally { button.disabled = false; }
 }
