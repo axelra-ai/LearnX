@@ -1635,6 +1635,10 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
         <div class="side-nav" data-nav="flashcards" onclick="nav('flashcards')"><i data-lucide="layers"></i><span>Flashcards</span></div>
         <div class="side-nav" data-nav="certificates" onclick="nav('certificates')"><i data-lucide="award"></i><span>Certificates</span></div>
       </div>
+      <div class="side-section" id="adminNavSection" style="display:none">
+        <div class="side-section-title">Admin</div>
+        <div class="side-nav" data-nav="admin" onclick="nav('admin')"><i data-lucide="shield"></i><span>Admin Panel</span></div>
+      </div>
       <div class="side-section">
         <div class="side-section-title">Progress</div>
         <div class="side-nav" data-nav="profile" onclick="nav('profile')"><i data-lucide="user-circle"></i><span>Profile</span></div>
@@ -1642,6 +1646,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
       </div>
       <div class="side-section">
         <div class="side-nav" data-nav="settings" onclick="nav('settings')"><i data-lucide="settings"></i><span>Settings</span></div>
+        <div class="side-nav" data-nav="admin" id="adminNavItem" onclick="nav('admin')" style="display:none"><i data-lucide="shield"></i><span>Admin Panel</span></div>
       </div>
       <div class="side-user" onclick="nav('profile')">
         <div class="avatar" id="sideUserAvatar">A</div>
@@ -2014,6 +2019,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
         <div class="page" id="page-courseLevels"></div>
         <div class="page" id="page-courseDetail"></div>
         <div class="page" id="page-lesson"></div>
+        <div class="page" id="page-admin"></div>
         <div class="page" id="page-quizTake"></div>
 
         <!-- AI CHAT (FULL PAGE) -->
@@ -2393,6 +2399,10 @@ async function loadServerState() {
     State.user = State.user || {};
     State.user.isAdmin = !!data.isAdmin;
     State.user.avatarUrl = data.avatarUrl || ''; DB.set('user', State.user); try { applyAvatarImages(); } catch (e) {}
+    const adminNav = document.getElementById('adminNavSection');
+    const adminNavItem = document.getElementById('adminNavItem');
+    if (adminNav) adminNav.style.display = State.user.isAdmin ? '' : 'none';
+    if (adminNavItem) adminNavItem.style.display = State.user.isAdmin ? '' : 'none';
     if (Settings.driveSync || (data.settings && data.settings.driveSync)) {
       // Is user ka data uski Drive me hai — server ka (khaali) data local par mat likho
       Settings.driveSync = true; saveSettings();
@@ -4230,7 +4240,7 @@ function applyUser() {
 
 /* NAV */
 let currentPage = 'home';
-const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', quizTake: 'Quiz' };
+const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
   if (p !== 'originChat' && Origin.activeChatId) backToOriginChats();
   if (p !== 'originChat') document.body.classList.remove('chat-open');
@@ -4254,6 +4264,7 @@ function nav(p) {
   if (p === 'settings') applyAllSettings();
   if (p === 'bookmarks') renderBookmarks();
   if (p === 'quiz') renderQuizzes();
+  if (p === 'admin') renderAdmin();
   if (p === 'courses' && !_coursesServerLoaded) loadCoursesFromServer().then(renderCourseCategories);
   if (p === 'flashcards') renderFlashcards();
   if (p === 'certificates') renderCertificates();
