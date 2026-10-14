@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       if (!file.ownedByMe || file.mimeType !== 'image/jpeg' || Number(file.size) > 90 * 1024 || !publicImage) {
         return res.status(403).json({ error: 'Photo aapki Drive ki public JPEG file nahi hai.' });
       }
-      const url = 'https://drive.google.com/uc?export=view&id=' + encodeURIComponent(driveFileId);
+      const url = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveFileId) + '&sz=w256';
       await sql`update users set avatar_data = null, avatar_url = ${url} where id = ${user.uid}`;
       return res.status(200).json({ avatarUrl: url });
     }
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'feed') {
       const rows = await sql`
         select v.id, v.user_id as "channelId", v.title, v.description,
-          v.drive_file_id as "driveFileId", v.mime_type as "mimeType",
+          v.drive_file_id as "driveFileId", v.thumbnail_file_id as "thumbnailFileId", v.mime_type as "mimeType",
           v.size_bytes as "sizeBytes", v.view_count as "viewCount", v.created_at as "createdAt",
           u.name as "channelName", u.avatar_url as "avatarUrl"
         from videos v join users u on u.id = v.user_id
@@ -112,7 +112,7 @@ export default async function handler(req, res) {
       if (!channels.length) return res.status(404).json({ error: 'Channel nahi mila.' });
       const videos = await sql`
         select id, user_id as "channelId", title, description,
-          drive_file_id as "driveFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
+          drive_file_id as "driveFileId", thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
           view_count as "viewCount", created_at as "createdAt"
         from videos where user_id = ${channelId} order by created_at desc limit 60
       `;
@@ -123,7 +123,8 @@ export default async function handler(req, res) {
       if (!requireUser(user, res)) return;
       const rows = await sql`
         select id, user_id as "channelId", title, description, drive_file_id as "driveFileId",
-          mime_type as "mimeType", size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt"
+          thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
+          view_count as "viewCount", created_at as "createdAt"
         from videos where user_id = ${user.uid} order by created_at desc
       `;
       return res.status(200).json({ videos: rows });
@@ -295,8 +296,15 @@ export default async function handler(req, res) {
       const driveRows = await sql`
         select c.id as "conversationId", c.drive_folder_id as "driveFolderId",
           case when c.participant_one_id = ${user.uid} then c.participant_two_id else c.participant_one_id end as "channelId",
-          u.name as "channelName", u.email as "channelEmail", u.avatar_url as "avatarUrl", null::uuid as "senderId",
-          'Open to view messages'::text as message, c.updated_at as "createdAt",
+          u.name as "channelName", u.email as "channelEmail", u.avatar_url as "avatarUrl", c.last_sender_id as "senderId",
+          coalesce(c.last_message_preview, 'Open to view messages') as message, c.updated_at as "createdAt",
+          case when c.last_sender_id = ${user.uid} then
+            case when c.participant_one_id = ${user.uid} then coalesce(c.last_read_two_at >= c.updated_at, false)
+              else coalesce(c.last_read_one_at >= c.updated_at, false) end
+            else false end as "isSeen",
+          case when c.last_sender_id is null or c.last_sender_id = ${user.uid} then false
+            when c.participant_one_id = ${user.uid} then coalesce(c.last_read_one_at < c.updated_at or c.last_read_one_at is null, true)
+            else coalesce(c.last_read_two_at < c.updated_at or c.last_read_two_at is null, true) end as "isUnread",
           exists(select 1 from video_presence p where p.user_id = u.id and p.last_seen > now() - interval '45 seconds') as "isOnline",
           exists(select 1 from video_presence p where p.user_id = u.id and p.typing_to = ${user.uid} and p.typing_until > now()) as "isTyping"
         from video_conversations c
@@ -333,10 +341,13 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST' && action === 'publish') {
       if (!requireUser(user, res)) return;
-      const { title, description = '', driveFileId, mimeType, sizeBytes, googleToken } = req.body || {};
+      const { title, description = '', driveFileId, mimeType, sizeBytes, googleToken, thumbnailFileId } = req.body || {};
       const size = Number(sizeBytes);
       if (!title || typeof title !== 'string' || title.trim().length > 160 || !driveFileId || !mimeType || !mimeType.startsWith('video/') || typeof googleToken !== 'string' || googleToken.length > 4096) {
         return res.status(400).json({ error: 'Video ka title ya file info sahi nahi hai.' });
+      }
+      if (thumbnailFileId && (typeof thumbnailFileId !== 'string' || !/^[a-zA-Z0-9_-]{10,200}$/.test(thumbnailFileId))) {
+        return res.status(400).json({ error: 'Thumbnail file id sahi nahi hai.' });
       }
       if (!Number.isSafeInteger(size) || size < 0 || size > MAX_VIDEO_BYTES) {
         return res.status(400).json({ error: 'Video 2 GB se chhoti honi chahiye.' });
@@ -350,10 +361,10 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Video aapke Google Drive ki verified file nahi hai.' });
       }
       const rows = await sql`
-        insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes)
-        values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size})
+        insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes, thumbnail_file_id)
+        values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null})
         returning id, title, description, drive_file_id as "driveFileId", mime_type as "mimeType",
-          size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt"
+          size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt", thumbnail_file_id as "thumbnailFileId"
       `;
       return res.status(201).json({ video: rows[0] });
     }
@@ -412,16 +423,57 @@ export default async function handler(req, res) {
         pageToken = data.nextPageToken || '';
       } while (pageToken && expected.size);
       if (expected.size) return res.status(409).json({ error: 'Saare messages Drive me nahi mile; database chat safe rakhi gayi.' });
+      const latest = legacy.reduce((newest, message) => !newest || new Date(message.createdAt) > new Date(newest.createdAt) ? message : newest, null);
+      if (latest) {
+        await sql`
+          update video_conversations set last_message_preview = ${String(latest.message).slice(0, 160)},
+            last_sender_id = ${latest.senderId}, updated_at = ${latest.createdAt}
+          where id = ${rows[0].id}
+        `;
+      }
       await sql`delete from video_messages where (sender_id = ${user.uid} and recipient_id = ${otherId}) or (sender_id = ${otherId} and recipient_id = ${user.uid})`;
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === 'POST' && action === 'conversation-read') {
+      if (!requireUser(user, res)) return;
+      const conversationId = String((req.body && req.body.conversationId) || '');
+      const rows = await sql`
+        update video_conversations set
+          last_read_one_at = case when participant_one_id = ${user.uid} then now() else last_read_one_at end,
+          last_read_two_at = case when participant_two_id = ${user.uid} then now() else last_read_two_at end
+        where id = ${conversationId} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
+        returning id
+      `;
+      return res.status(rows.length ? 200 : 404).json(rows.length ? { ok: true } : { error: 'Conversation nahi mila.' });
+    }
+
+    if (req.method === 'POST' && action === 'conversation-preview') {
+      if (!requireUser(user, res)) return;
+      const { conversationId, messagePreview, senderId, messageCreatedAt } = req.body || {};
+      if (typeof messagePreview !== 'string' || !messagePreview.trim() || !UUID_RE.test(String(senderId || '')) || !Number.isFinite(Date.parse(messageCreatedAt))) {
+        return res.status(400).json({ error: 'Chat preview details valid nahi hain.' });
+      }
+      const rows = await sql`
+        update video_conversations set
+          last_message_preview = ${messagePreview.slice(0, 160)}, last_sender_id = ${senderId},
+          updated_at = greatest(updated_at, ${new Date(messageCreatedAt)})
+        where id = ${String(conversationId || '')}
+          and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
+          and (last_message_preview is null or updated_at < ${new Date(messageCreatedAt)})
+        returning id
+      `;
       return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'POST' && action === 'conversation-activity') {
       if (!requireUser(user, res)) return;
-      const conversationId = String((req.body && req.body.conversationId) || '');
+      const { conversationId, messagePreview, senderId } = req.body || {};
+      if (senderId !== user.uid || typeof messagePreview !== 'string' || !messagePreview.trim()) return res.status(400).json({ error: 'Chat preview details valid nahi hain.' });
       const rows = await sql`
-        update video_conversations set updated_at = now()
-        where id = ${conversationId} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
+        update video_conversations set updated_at = now(), last_message_preview = ${messagePreview.slice(0, 160)},
+          last_sender_id = ${user.uid}
+        where id = ${String(conversationId || '')} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
         returning id
       `;
       return res.status(rows.length ? 200 : 404).json(rows.length ? { ok: true } : { error: 'Conversation nahi mila.' });
@@ -453,7 +505,36 @@ export default async function handler(req, res) {
         method: 'DELETE', headers: { Authorization: 'Bearer ' + googleToken },
       });
       if (!removed.ok && removed.status !== 404) return res.status(502).json({ error: 'Drive message delete nahi ho paaya.' });
-      await sql`update video_conversations set updated_at = now() where id = ${conversations[0].id}`;
+
+      const folderUrl = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("'" + String(conversations[0].driveFolderId).replace(/'/g, "\\'") + "' in parents and trashed = false") + '&pageSize=1000&fields=nextPageToken,files(id,description,createdTime)';
+      const remainingResponse = await fetch(folderUrl, { headers: { Authorization: 'Bearer ' + googleToken } });
+      if (!remainingResponse.ok) {
+        await sql`update video_conversations set updated_at = now(), last_message_preview = null, last_sender_id = null where id = ${conversations[0].id}`;
+        return res.status(200).json({ ok: true });
+      }
+      const remainingData = await remainingResponse.json();
+      const remaining = (remainingData.files || []).map(file => {
+        try {
+          const payload = JSON.parse(file.description || '{}');
+          const createdAt = payload.createdAt || file.createdTime || new Date().toISOString();
+          if (!payload.message || !payload.id || payload.id === messageId) return null;
+          return { id: payload.id, senderId: payload.senderId, message: String(payload.message || ''), createdAt };
+        } catch (e) {
+          return null;
+        }
+      }).filter(Boolean);
+      if (remaining.length) {
+        const latest = remaining.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).at(-1);
+        await sql`
+          update video_conversations set
+            updated_at = ${new Date(latest.createdAt)},
+            last_message_preview = ${String(latest.message).slice(0, 160)},
+            last_sender_id = ${latest.senderId || null}
+          where id = ${conversations[0].id}
+        `;
+      } else {
+        await sql`update video_conversations set updated_at = now(), last_message_preview = null, last_sender_id = null where id = ${conversations[0].id}`;
+      }
       return res.status(200).json({ ok: true });
     }
 
