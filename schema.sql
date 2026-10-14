@@ -57,6 +57,7 @@ create table if not exists videos (
   title text not null check (char_length(title) between 1 and 160),
   description text not null default '',
   drive_file_id text not null unique,
+  thumbnail_file_id text null,
   mime_type text not null,
   size_bytes bigint not null default 0 check (size_bytes >= 0),
   view_count bigint not null default 0 check (view_count >= 0),
