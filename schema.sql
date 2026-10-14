@@ -63,6 +63,12 @@ create table if not exists videos (
   view_count bigint not null default 0 check (view_count >= 0),
   created_at timestamptz not null default now()
 );
+-- Purani videos table me ye columns nahi hote; "create table if not exists" unhe add nahi karta.
+alter table videos add column if not exists thumbnail_file_id text;
+alter table videos add column if not exists description text not null default '';
+alter table videos add column if not exists mime_type text not null default 'video/mp4';
+alter table videos add column if not exists size_bytes bigint not null default 0;
+alter table videos add column if not exists view_count bigint not null default 0;
 create index if not exists idx_videos_feed on videos(created_at desc);
 create index if not exists idx_videos_owner on videos(user_id, created_at desc);
 
