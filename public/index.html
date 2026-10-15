@@ -2836,8 +2836,12 @@ async function loadOriginMessages(channelId, targetId = 'originMessages') {
     const el = document.getElementById(targetId); if (!el) return;
     let messages = data.messages || [];
     if (data.driveFolderId) {
-      if (!Origin.token || Origin.ownerId !== (State.user && State.user.id) || Date.now() >= Origin.exp) throw new Error('Google Drive dobara connect karne ke liye chat ko band karke phir kholein.');
-      messages = await listDriveChatMessages(data.driveFolderId);
+      try {
+        if (!Origin.token || Origin.ownerId !== (State.user && State.user.id) || Date.now() >= Origin.exp) throw new Error('Google Drive dobara connect karne ke liye chat ko band karke phir kholein.');
+        const driveList = await listDriveChatMessages(data.driveFolderId);
+        const ids = new Set(driveList.map(m => m.id));
+        messages = driveList.concat(messages.filter(m => !ids.has(m.id))).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      } catch (driveError) { if (!messages.length) throw driveError; }
     }
     el.innerHTML = messages.length ? messages.map(m => `<div class="origin-message ${State.user && m.senderId === State.user.id ? 'mine' : ''}"><b>${m.senderId === (State.user && State.user.id) ? 'You' : esc(m.senderName || 'Them')}</b><div>${esc(m.message)}</div><time class="origin-message-time">${new Date(m.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</time></div>`).join('') : '<p class="origin-channel-stats">Abhi koi message nahi. Baat shuru karein.</p>';
     el.scrollTop = el.scrollHeight;
@@ -3164,25 +3168,27 @@ async function migrateDriveConversation(channelId, channelName, source, tokenPro
   return Object.assign(conversation, { knownIds: known });
 }
 async function sendDriveChatMessage(channelId, message, tokenPromise = null, channelName = '') {
-  const source = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(channelId));
-  const conversation = await migrateDriveConversation(channelId, channelName || (Origin.activeChat && Origin.activeChat.name), source, tokenPromise);
+  const id = window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'm' + Date.now() + Math.random().toString(36).slice(2);
+  const record = { id, senderId: State.user.id, senderName: State.user.name, message, createdAt: new Date().toISOString() };
   if (ChatRealtime.topic !== chatRealtimeTopic(channelId) || ['closed', 'CHANNEL_ERROR', 'TIMED_OUT'].includes(ChatRealtime.status)) {
     connectOriginRealtime(channelId).catch(() => { ChatRealtime.status = 'CHANNEL_ERROR'; });
   }
-  const id = window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'm' + Date.now() + Math.random().toString(36).slice(2);
-  const record = { id, senderId: State.user.id, senderName: State.user.name, message, createdAt: new Date().toISOString() };
   let realtimeSent = false;
   if (ChatRealtime.status === 'SUBSCRIBED') {
     try { realtimeSent = await sendOriginRealtime('message', record); } catch (e) {}
   }
-  // 1) Server copy: samne wale ko restart ke baad bhi message dikhe aur push notification jaaye.
+  // 1) SABSE PEHLE server copy: samne wale ko restart ke baad bhi message dikhe aur push notification jaaye.
+  //    Drive me kuch bhi fail ho, ye step message ko deliver kar deta hai.
   let relayed = false;
   try {
     await apiFetch('/api/videos?action=message', { method: 'POST', body: JSON.stringify({ recipientId: channelId, message, id }) });
     relayed = true;
   } catch (error) { console.warn('Message relay fail:', error); }
   // 2) Meri Drive me archive copy. Server copy ho chuki ho to Drive fail hone par bhi message bheja hua maana jaayega.
+  let conversation = null;
   try {
+    const source = await apiFetch('/api/videos?action=messages&with=' + encodeURIComponent(channelId));
+    conversation = await migrateDriveConversation(channelId, channelName || (Origin.activeChat && Origin.activeChat.name), source, tokenPromise);
     await uploadDriveChatMessage(conversation.driveFolderId, record, conversation.knownIds);
   } catch (error) {
     if (!relayed) {
@@ -3191,7 +3197,7 @@ async function sendDriveChatMessage(channelId, message, tokenPromise = null, cha
     }
     console.warn('Drive save fail hua, server copy safe hai:', error);
   }
-  if (!relayed && conversation.conversationId) {
+  if (!relayed && conversation && conversation.conversationId) {
     try { await apiFetch('/api/videos?action=conversation-activity', {
       method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId, messagePreview: message, senderId: State.user.id })
     }); } catch (error) { console.warn('Chat activity update failed after Drive save:', error); }
@@ -3629,9 +3635,15 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
     }
     let driveMessages = [];
     if (data.driveFolderId) {
-      const driveToken = driveTokenPromise ? await driveTokenPromise : (Origin.token && Origin.ownerId === (State.user && State.user.id) && Date.now() < Origin.exp ? Origin.token : null);
-      if (!driveToken) throw new Error('Google Drive dobara connect karne ke liye chat ko band karke phir kholein.');
-      driveMessages = await listDriveChatMessages(data.driveFolderId);
+      try {
+        const driveToken = driveTokenPromise ? await driveTokenPromise : (Origin.token && Origin.ownerId === (State.user && State.user.id) && Date.now() < Origin.exp ? Origin.token : null);
+        if (!driveToken) throw new Error('Google Drive dobara connect karne ke liye chat ko band karke phir kholein.');
+        driveMessages = await listDriveChatMessages(data.driveFolderId);
+      } catch (driveError) {
+        // Drive na khule to bhi server par rakhe messages dikhao, poori chat ko error me mat badlo.
+        console.warn('Drive messages load nahi hue:', driveError);
+        if (!(data.messages || []).length) throw driveError;
+      }
     }
     const driveIds = new Set(driveMessages.map(message => message.id));
     Origin.threadMsgs = driveMessages.concat((data.messages || []).filter(message => !driveIds.has(message.id)))
