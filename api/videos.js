@@ -1,6 +1,11 @@
 import { sql } from '../lib/db.js';
 import { getUserFromReq } from '../lib/auth.js';
-import { sendPushToUser, pushPublicKey } from '../lib/push.js';
+
+// Push optional hai: file/package/keys na hon to bhi videos aur chats chalte rehne chahiye.
+async function loadPush() {
+  try { return await import('../lib/push.js'); }
+  catch (err) { console.error('push.js load nahi hui:', err && err.message); return null; }
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
@@ -487,7 +492,8 @@ export default async function handler(req, res) {
         const recipientId = rows[0].one === user.uid ? rows[0].two : rows[0].one;
         const who = await sql`select name from users where id = ${user.uid} limit 1`;
         const senderName = (who[0] && who[0].name) || user.name || 'Kisi ne';
-        await sendPushToUser(recipientId, {
+        const push = await loadPush();
+        if (push) await push.sendPushToUser(recipientId, {
           type: 'chat',
           title: senderName,
           body: messagePreview.trim().slice(0, 140),
@@ -502,7 +508,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET' && action === 'push-key') {
-      return res.status(200).json({ publicKey: pushPublicKey() });
+      const push = await loadPush();
+      return res.status(200).json({ publicKey: push ? await push.pushPublicKey() : '' });
     }
 
     if (req.method === 'POST' && action === 'push-subscribe') {
