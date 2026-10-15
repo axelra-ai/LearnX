@@ -9,6 +9,9 @@ async function loadPush() {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+const MAX_REEL_BYTES = 500 * 1024 * 1024;
+const SCHEMA_HINT = 'Supabase me latest schema.sql run karein (reels/likes/comments tables missing hain).';
+
 
 function requireUser(user, res) {
   if (!user) {
@@ -75,14 +78,50 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET' && action === 'feed') {
-      const rows = await sql`
-        select v.id, v.user_id as "channelId", v.title, v.description,
-          v.drive_file_id as "driveFileId", v.thumbnail_file_id as "thumbnailFileId", v.mime_type as "mimeType",
-          v.size_bytes as "sizeBytes", v.view_count as "viewCount", v.created_at as "createdAt",
-          u.name as "channelName", u.avatar_url as "avatarUrl"
-        from videos v join users u on u.id = v.user_id
-        order by case when ${req.query.sort === 'trending'} then v.view_count end desc, v.created_at desc limit 40
-      `;
+      const kind = req.query.kind === 'reel' ? 'reel' : 'video';
+      const trending = req.query.sort === 'trending';
+      if (kind === 'reel') {
+        // Reels: likes/comments ke counts ke saath. Schema run na hui ho to 503 + hint.
+        try {
+          const rows = await sql`
+            select v.id, v.user_id as "channelId", v.title, v.description,
+              v.drive_file_id as "driveFileId", v.thumbnail_file_id as "thumbnailFileId", v.mime_type as "mimeType",
+              v.size_bytes as "sizeBytes", v.view_count as "viewCount", v.created_at as "createdAt", v.kind,
+              u.name as "channelName", u.avatar_url as "avatarUrl",
+              (select count(*)::int from video_likes l where l.video_id = v.id) as "likeCount",
+              (select count(*)::int from video_comments c where c.video_id = v.id) as "commentCount",
+              exists(select 1 from video_likes l where l.video_id = v.id and l.user_id = ${user ? user.uid : null}) as "likedByMe"
+            from videos v join users u on u.id = v.user_id
+            where v.kind = 'reel'
+            order by case when ${trending} then v.view_count end desc, v.created_at desc limit 40
+          `;
+          return res.status(200).json({ videos: rows });
+        } catch (err) {
+          if (err && (err.code === '42703' || err.code === '42P01')) return res.status(503).json({ error: SCHEMA_HINT });
+          throw err;
+        }
+      }
+      const longQuery = async (withKind) => withKind
+        ? sql`
+            select v.id, v.user_id as "channelId", v.title, v.description,
+              v.drive_file_id as "driveFileId", v.thumbnail_file_id as "thumbnailFileId", v.mime_type as "mimeType",
+              v.size_bytes as "sizeBytes", v.view_count as "viewCount", v.created_at as "createdAt",
+              u.name as "channelName", u.avatar_url as "avatarUrl"
+            from videos v join users u on u.id = v.user_id
+            where v.kind = 'video'
+            order by case when ${trending} then v.view_count end desc, v.created_at desc limit 40
+          `
+        : sql`
+            select v.id, v.user_id as "channelId", v.title, v.description,
+              v.drive_file_id as "driveFileId", v.thumbnail_file_id as "thumbnailFileId", v.mime_type as "mimeType",
+              v.size_bytes as "sizeBytes", v.view_count as "viewCount", v.created_at as "createdAt",
+              u.name as "channelName", u.avatar_url as "avatarUrl"
+            from videos v join users u on u.id = v.user_id
+            order by case when ${trending} then v.view_count end desc, v.created_at desc limit 40
+          `;
+      let rows;
+      try { rows = await longQuery(true); }
+      catch (err) { if (err && err.code === '42703') rows = await longQuery(false); else throw err; } // schema abhi run nahi hui to purana behaviour
       return res.status(200).json({ videos: rows });
     }
 
@@ -114,7 +153,7 @@ export default async function handler(req, res) {
       const videos = await sql`
         select id, user_id as "channelId", title, description,
           drive_file_id as "driveFileId", thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
-          view_count as "viewCount", created_at as "createdAt"
+          view_count as "viewCount", created_at as "createdAt", coalesce(to_jsonb(videos)->>'kind', 'video') as "kind"
         from videos where user_id = ${channelId} order by created_at desc limit 60
       `;
       return res.status(200).json({ channel: channels[0], videos });
@@ -125,7 +164,7 @@ export default async function handler(req, res) {
       const rows = await sql`
         select id, user_id as "channelId", title, description, drive_file_id as "driveFileId",
           thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
-          view_count as "viewCount", created_at as "createdAt"
+          view_count as "viewCount", created_at as "createdAt", coalesce(to_jsonb(videos)->>'kind', 'video') as "kind"
         from videos where user_id = ${user.uid} order by created_at desc
       `;
       return res.status(200).json({ videos: rows });
@@ -345,6 +384,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'publish') {
       if (!requireUser(user, res)) return;
       const { title, description = '', driveFileId, mimeType, sizeBytes, googleToken, thumbnailFileId } = req.body || {};
+      const kind = (req.body && req.body.kind) === 'reel' ? 'reel' : 'video';
       const size = Number(sizeBytes);
       if (!title || typeof title !== 'string' || title.trim().length > 160 || !driveFileId || !mimeType || !mimeType.startsWith('video/') || typeof googleToken !== 'string' || googleToken.length > 4096) {
         return res.status(400).json({ error: 'Video ka title ya file info sahi nahi hai.' });
@@ -355,6 +395,7 @@ export default async function handler(req, res) {
       if (!Number.isSafeInteger(size) || size < 0 || size > MAX_VIDEO_BYTES) {
         return res.status(400).json({ error: 'Video 2 GB se chhoti honi chahiye.' });
       }
+      if (kind === 'reel' && size > MAX_REEL_BYTES) return res.status(400).json({ error: 'Reel 500 MB se chhoti honi chahiye.' });
       const driveFile = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(String(driveFileId)) + '?fields=id,mimeType,size,ownedByMe', {
         headers: { Authorization: 'Bearer ' + googleToken },
       });
@@ -363,12 +404,27 @@ export default async function handler(req, res) {
       if (!verifiedFile.ownedByMe || verifiedFile.mimeType !== mimeType || Number(verifiedFile.size) !== size) {
         return res.status(403).json({ error: 'Video aapke Google Drive ki verified file nahi hai.' });
       }
-      const rows = await sql`
-        insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes, thumbnail_file_id)
-        values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null})
-        returning id, title, description, drive_file_id as "driveFileId", mime_type as "mimeType",
-          size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt", thumbnail_file_id as "thumbnailFileId"
-      `;
+      let rows;
+      if (kind === 'reel') {
+        try {
+          rows = await sql`
+            insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes, thumbnail_file_id, kind)
+            values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null}, 'reel')
+            returning id, title, description, drive_file_id as "driveFileId", mime_type as "mimeType",
+              size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt", thumbnail_file_id as "thumbnailFileId", kind
+          `;
+        } catch (err) {
+          if (err && err.code === '42703') return res.status(503).json({ error: SCHEMA_HINT });
+          throw err;
+        }
+      } else {
+        rows = await sql`
+          insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes, thumbnail_file_id)
+          values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null})
+          returning id, title, description, drive_file_id as "driveFileId", mime_type as "mimeType",
+            size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt", thumbnail_file_id as "thumbnailFileId"
+        `;
+      }
       return res.status(201).json({ video: rows[0] });
     }
 
@@ -669,6 +725,94 @@ export default async function handler(req, res) {
       }
       await sql`delete from video_messages where (sender_id = ${user.uid} and recipient_id = ${otherId}) or (sender_id = ${otherId} and recipient_id = ${user.uid})`;
       return res.status(200).json({ ok: true });
+    }
+
+    // ===== Reels: like / comments =====
+    if (req.method === 'POST' && action === 'like') {
+      if (!requireUser(user, res)) return;
+      const videoId = String((req.body && req.body.videoId) || '');
+      if (!UUID_RE.test(videoId)) return res.status(400).json({ error: 'Video valid nahi hai.' });
+      try {
+        const removed = await sql`delete from video_likes where video_id = ${videoId} and user_id = ${user.uid} returning video_id`;
+        let liked = false;
+        if (!removed.length) {
+          await sql`insert into video_likes (video_id, user_id) values (${videoId}, ${user.uid}) on conflict do nothing`;
+          liked = true;
+        }
+        const count = await sql`select count(*)::int as n from video_likes where video_id = ${videoId}`;
+        return res.status(200).json({ liked, likeCount: count[0].n });
+      } catch (err) {
+        if (err && err.code === '23503') return res.status(404).json({ error: 'Video nahi mila.' });
+        if (err && err.code === '42P01') return res.status(503).json({ error: SCHEMA_HINT });
+        throw err;
+      }
+    }
+
+    if (req.method === 'GET' && action === 'comments') {
+      if (!requireUser(user, res)) return;
+      const videoId = String(req.query.videoId || '');
+      if (!UUID_RE.test(videoId)) return res.status(400).json({ error: 'Video valid nahi hai.' });
+      try {
+        const rows = await sql`
+          select c.id, c.user_id as "userId", u.name, u.avatar_url as "avatarUrl", c.body, c.created_at as "createdAt"
+          from video_comments c join users u on u.id = c.user_id
+          where c.video_id = ${videoId} order by c.created_at desc limit 100
+        `;
+        const owner = await sql`select user_id as "ownerId" from videos where id = ${videoId} limit 1`;
+        return res.status(200).json({ comments: rows, ownerId: owner[0] ? owner[0].ownerId : null });
+      } catch (err) {
+        if (err && err.code === '42P01') return res.status(503).json({ error: SCHEMA_HINT });
+        throw err;
+      }
+    }
+
+    if (req.method === 'POST' && action === 'comment') {
+      if (!requireUser(user, res)) return;
+      const videoId = String((req.body && req.body.videoId) || '');
+      const body = String((req.body && req.body.body) || '').trim();
+      if (!UUID_RE.test(videoId) || !body || body.length > 500) return res.status(400).json({ error: 'Comment 1 se 500 akshar ka hona chahiye.' });
+      try {
+        const recent = await sql`select count(*)::int as n from video_comments where user_id = ${user.uid} and created_at > now() - interval '30 seconds'`;
+        if (recent[0].n >= 6) return res.status(429).json({ error: 'Thoda ruk kar comment karein.' });
+        const rows = await sql`
+          insert into video_comments (video_id, user_id, body) values (${videoId}, ${user.uid}, ${body})
+          returning id, user_id as "userId", body, created_at as "createdAt"
+        `;
+        const me = await sql`select name, avatar_url as "avatarUrl" from users where id = ${user.uid} limit 1`;
+        const comment = Object.assign({}, rows[0], { name: me[0] ? me[0].name : '', avatarUrl: me[0] ? me[0].avatarUrl : null });
+        const count = await sql`select count(*)::int as n from video_comments where video_id = ${videoId}`;
+        // Reel ke owner ko notification (khud ki reel par nahi). Fail hone par comment save rehta hai.
+        try {
+          const owner = await sql`select user_id as "ownerId", title from videos where id = ${videoId} limit 1`;
+          if (owner[0] && owner[0].ownerId !== user.uid) {
+            const push = await loadPush();
+            if (push) await push.sendPushToUser(owner[0].ownerId, {
+              type: 'comment', title: (comment.name || 'Kisi ne') + ' ne comment kiya', body: body.slice(0, 140),
+              senderId: user.uid, url: '/', ts: Date.now(),
+            });
+          }
+        } catch (pushErr) { console.warn('Comment push failed:', pushErr && pushErr.message); }
+        return res.status(201).json({ comment, commentCount: count[0].n });
+      } catch (err) {
+        if (err && err.code === '23503') return res.status(404).json({ error: 'Video nahi mila.' });
+        if (err && err.code === '42P01') return res.status(503).json({ error: SCHEMA_HINT });
+        throw err;
+      }
+    }
+
+    if (req.method === 'DELETE' && action === 'comment') {
+      if (!requireUser(user, res)) return;
+      const id = String(req.query.id || '');
+      if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Comment valid nahi hai.' });
+      // Comment likhne wala ya reel ka owner delete kar sakta hai.
+      const rows = await sql`
+        delete from video_comments c using videos v
+        where c.id = ${id} and v.id = c.video_id and (c.user_id = ${user.uid} or v.user_id = ${user.uid})
+        returning c.video_id as "videoId"
+      `;
+      if (!rows.length) return res.status(404).json({ error: 'Comment nahi mila ya aap delete nahi kar sakte.' });
+      const count = await sql`select count(*)::int as n from video_comments where video_id = ${rows[0].videoId}`;
+      return res.status(200).json({ ok: true, commentCount: count[0].n });
     }
 
     if (req.method === 'POST' && action === 'view') {
