@@ -148,3 +148,13 @@ create policy learnx_chat_send on realtime.messages
 
 -- Legacy profile photo bytes; new uploads are stored in Google Drive.
 alter table users add column if not exists avatar_data bytea;
+
+-- Web Push subscriptions (har device ka ek endpoint) — chat notifications ke liye.
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_push_subscriptions_user on push_subscriptions(user_id);
