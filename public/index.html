@@ -1574,6 +1574,59 @@ html{overscroll-behavior-y:contain}
 *{-webkit-tap-highlight-color:transparent}
 button,a,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.fab,.origin-upload-fab,.quick-card,.category-card,.settings-nav-item,.settings-mobile-tab,label,select{touch-action:manipulation}
 button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobile-nav,.fab,.origin-upload-fab,.toast{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* ===== REELS ===== */
+.reels-wrap{position:relative;max-width:440px;margin:0 auto}
+.reels-feed{height:calc(100vh - var(--topbar-h) - 64px);height:calc(100dvh - var(--topbar-h) - 64px);overflow-y:scroll;scroll-snap-type:y mandatory;border-radius:18px;background:#000;overscroll-behavior:contain;scrollbar-width:none}
+.reels-feed::-webkit-scrollbar{display:none}
+@media(max-width:768px){.reels-feed{height:calc(100dvh - var(--topbar-h) - 140px);border-radius:14px}}
+.reel{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;background:#000;color:#fff}
+.reel-media{position:absolute;inset:0;cursor:pointer}
+.reel-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .25s}
+.reel-media.playing .reel-poster{opacity:0}
+.reel-video,.reel-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;border:0}
+.reel-shade{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(transparent,rgba(0,0,0,.78));pointer-events:none}
+.reel-info{position:absolute;left:14px;right:78px;bottom:16px;z-index:2;pointer-events:none}
+.reel-info button{pointer-events:auto}
+.reel-channel{display:flex;align-items:center;gap:8px;background:none;border:0;color:#fff;font:inherit;padding:0;cursor:pointer;margin-bottom:8px;max-width:100%}
+.reel-channel b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reel-channel .origin-avatar{width:34px;height:34px;flex:0 0 34px;font-size:14px}
+.reel-title{font-weight:600;font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.reel-desc{font-size:13px;opacity:.85;margin:4px 0 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.reel-actions{position:absolute;right:8px;bottom:20px;display:flex;flex-direction:column;gap:14px;align-items:center;z-index:3}
+.reel-act{background:none;border:0;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font:inherit;font-size:12px;font-weight:600;padding:4px 6px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.7))}
+.reel-act svg{width:28px;height:28px}
+.reel-act.like.on svg{fill:#ff3b5c;color:#ff3b5c;stroke:#ff3b5c}
+.reel-pause{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(0,0,0,.5);display:none;place-items:center;z-index:2;pointer-events:none}
+.reel-pause svg{width:30px;height:30px}
+.reel.paused .reel-pause{display:grid}
+.reels-upload{position:absolute;top:12px;right:12px;z-index:5;display:flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-radius:100px;background:rgba(0,0,0,.55);color:#fff;font:inherit;font-weight:600;font-size:13px;cursor:pointer;backdrop-filter:blur(8px)}
+.reels-upload svg{width:16px;height:16px}
+.reels-empty{height:100%;display:grid;place-items:center;text-align:center;padding:24px;color:#fff}
+.reels-empty svg{width:38px;height:38px;opacity:.8;margin-bottom:8px}
+.reels-empty h3{margin:0 0 6px}
+.reels-empty p{opacity:.8;font-size:14px;margin:0 0 14px}
+body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!important}
+.reel-sheet-overlay{position:fixed;inset:0;z-index:6500;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center}
+.reel-sheet-overlay.open{display:flex}
+.reel-sheet{width:100%;max-width:520px;max-height:78dvh;height:78vh;background:var(--surface-solid,var(--surface));color:var(--text);border-radius:20px 20px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.reel-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.reel-comment-list{flex:1;min-height:0;overflow-y:auto;padding:8px 16px}
+.reel-comment{display:flex;gap:10px;padding:10px 0}
+.reel-comment .origin-avatar{width:34px;height:34px;flex:0 0 34px;font-size:13px}
+.reel-comment-body{flex:1;min-width:0}
+.reel-comment-body b{font-size:13px}
+.reel-comment-body small{color:var(--text-dimmer);margin-left:6px;font-size:11.5px}
+.reel-comment-body p{margin:2px 0 0;font-size:14px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+.reel-comment-del{background:none;border:0;color:var(--text-dimmer);cursor:pointer;padding:4px;align-self:flex-start}
+.reel-comment-del svg{width:16px;height:16px}
+.reel-comment-form{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+.reel-comment-form input{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--border-2);border-radius:100px;background:var(--surface-2);color:var(--text);font:inherit}
+.origin-kind-toggle{display:flex;gap:8px;margin:10px 0 4px}
+.origin-kind-toggle button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+.origin-kind-toggle button svg{width:16px;height:16px}
+.origin-kind-toggle button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.origin-reel-badge{position:absolute;left:10px;top:10px;z-index:2;padding:3px 9px;border-radius:100px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em}
 </style>
 </head>
 <body>
@@ -1632,6 +1685,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
         <div class="side-nav" data-nav="courses" onclick="nav('courses')"><i data-lucide="book-open"></i><span>Courses</span></div>
         <div class="side-nav" data-nav="bookmarks" onclick="nav('bookmarks')"><i data-lucide="bookmark"></i><span>Bookmarks</span></div>
         <div class="side-nav" data-nav="origin" onclick="nav('origin')"><i data-lucide="circle-play"></i><span>Origin Play</span></div>
+        <div class="side-nav" data-nav="reels" onclick="nav('reels')"><i data-lucide="film"></i><span>Reels</span></div>
         <div class="side-nav" data-nav="originChat" onclick="nav('originChat')"><i data-lucide="messages-square"></i><span>Chats</span></div>
         <div class="side-nav" data-nav="ai" onclick="nav('ai')"><i data-lucide="sparkles"></i><span>AI Chat</span><span class="badge">AI</span></div>
       </div>
@@ -2004,6 +2058,13 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
           </div>
         </div>
 
+        <div class="page" id="page-reels">
+          <div class="reels-wrap">
+            <div class="reels-feed" id="reelsFeed"><div class="reels-empty"><p>Reels load ho rahi hain...</p></div></div>
+            <button class="reels-upload" onclick="openOriginUpload('reel')" type="button"><i data-lucide="plus"></i>Reel</button>
+          </div>
+        </div>
+
         <div class="page" id="page-originChat">
           <div class="origin-chat-layout" id="originChatLayout">
             <aside class="origin-chat-list">
@@ -2252,6 +2313,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
       <div class="mnav active" data-nav="home" onclick="nav('home')"><i data-lucide="home"></i><span>Home</span></div>
       <div class="mnav" data-nav="courses" onclick="nav('courses')"><i data-lucide="book-open"></i><span>Courses</span></div>
       <div class="mnav" data-nav="ai" onclick="nav('ai')"><i data-lucide="sparkles"></i><span>AI</span></div>
+      <div class="mnav" data-nav="reels" onclick="nav('reels')"><i data-lucide="film"></i><span>Reels</span></div>
       <div class="mnav" data-nav="profile" onclick="nav('profile')"><i data-lucide="user-circle"></i><span>Profile</span></div>
       <div class="mnav" data-nav="settings" onclick="nav('settings')"><i data-lucide="settings"></i><span>More</span></div>
     </div>
@@ -2320,14 +2382,29 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
 <div class="modal-overlay" id="originUploadModal">
   <div class="modal">
     <h3>Upload to Origin Play</h3>
-    <p class="modal-sub">Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.</p>
+    <div class="origin-kind-toggle" id="originKindToggle">
+      <button type="button" class="active" data-kind="video" onclick="setOriginUploadKind('video')"><i data-lucide="video"></i>Video</button>
+      <button type="button" data-kind="reel" onclick="setOriginUploadKind('reel')"><i data-lucide="film"></i>Reel</button>
+    </div>
+    <p class="modal-sub" id="originUploadSub">Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.</p>
     <div class="field"><label class="field-label" for="originVideoTitle">Video title</label><input type="text" class="field-input" id="originVideoTitle" maxlength="160" placeholder="Video ka naam"></div>
     <div class="field"><label class="field-label" for="originVideoDescription">Description</label><textarea class="field-input" id="originVideoDescription" maxlength="2000" rows="3" placeholder="Video ke baare me"></textarea></div>
     <div class="field"><label class="field-label" for="originVideoThumb">Thumbnail (optional)</label><input type="file" class="field-input" id="originVideoThumb" accept="image/*"></div>
-    <div class="field"><label class="field-label" for="originVideoFile">Video file (max 2 GB)</label><input type="file" class="field-input" id="originVideoFile" accept="video/*"></div>
+    <div class="field"><label class="field-label" for="originVideoFile" id="originVideoFileLabel">Video file (max 2 GB)</label><input type="file" class="field-input" id="originVideoFile" accept="video/*"></div>
     <div id="originUploadStatus" class="modal-sub" aria-live="polite"></div>
     <div class="origin-progress" id="originUploadProgress" hidden><span id="originUploadProgressBar"></span></div>
     <div class="modal-actions"><button class="btn btn-secondary" onclick="closeOriginUpload()" type="button">Cancel</button><button class="btn btn-primary" id="originUploadSubmit" onclick="uploadOriginVideo()" type="button"><i data-lucide="upload"></i>Upload</button></div>
+  </div>
+</div>
+
+<div class="reel-sheet-overlay" id="reelComments" onclick="if(event.target===this)closeReelComments()">
+  <div class="reel-sheet" role="dialog" aria-label="Comments">
+    <div class="reel-sheet-head"><b id="reelCommentsTitle">Comments</b><button class="btn-icon" onclick="closeReelComments()" type="button" aria-label="Close"><i data-lucide="x"></i></button></div>
+    <div class="reel-comment-list" id="reelCommentList"></div>
+    <form class="reel-comment-form" onsubmit="postReelComment(event)" autocomplete="off">
+      <input id="reelCommentInput" maxlength="500" placeholder="Comment likhein..." enterkeyhint="send">
+      <button class="btn btn-primary btn-sm" type="submit">Post</button>
+    </form>
   </div>
 </div>
 
@@ -2742,7 +2819,7 @@ function originVideoCardHTML(video, owner = false) {
   const driveId = encodeURIComponent(thumbId || video.driveFileId || '');
   const thumbUrl = thumbId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w640` : `https://drive.google.com/thumbnail?id=${encodeURIComponent(video.driveFileId)}&sz=w640`;
   return `<article class="origin-video" aria-label="${originAttr(video.title)}">
-    <div class="origin-thumb"><img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
     <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
@@ -3022,6 +3099,198 @@ function openChatFromUrl() {
     history.replaceState(null, '', location.pathname);
     openChatFromPush(id, params.get('name') || '');
   } catch (e) {}
+}
+/* ===== REELS ===== */
+const Reels = { items: [], observer: null, activeId: null, muted: true, commentsFor: null, ownerId: null };
+function reelFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n); }
+function reelAgo(ts) {
+  const sec = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
+  if (sec < 60) return 'abhi'; if (sec < 3600) return Math.floor(sec / 60) + ' min'; if (sec < 86400) return Math.floor(sec / 3600) + ' ghanta';
+  return Math.floor(sec / 86400) + ' din';
+}
+function reelVideoDuration(file) {
+  return new Promise(resolve => {
+    const v = document.createElement('video'); const url = URL.createObjectURL(file);
+    const done = value => { URL.revokeObjectURL(url); resolve(value); };
+    v.preload = 'metadata'; v.onloadedmetadata = () => done(isFinite(v.duration) ? v.duration : 0);
+    v.onerror = () => done(0); setTimeout(() => done(0), 8000); v.src = url;
+  });
+}
+function reelHTML(r) {
+  const own = State.user && r.channelId === State.user.id;
+  const id = esc(r.id);
+  const thumb = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(r.thumbnailFileId || r.driveFileId) + '&sz=w720';
+  return `<section class="reel" data-reel-id="${originAttr(r.id)}">
+    <div class="reel-media" onclick="reelTap('${id}')"><img class="reel-poster" src="${originAttr(thumb)}" alt="" onerror="this.style.display='none'" draggable="false"></div>
+    <div class="reel-pause"><i data-lucide="play"></i></div>
+    <div class="reel-shade"></div>
+    <div class="reel-info">
+      <button class="reel-channel" onclick="openOriginChannel('${esc(r.channelId)}')" type="button">${originAvatarHTML({ name: r.channelName, avatarUrl: r.avatarUrl })}<b>${esc(r.channelName || '')}</b></button>
+      <div class="reel-title">${esc(r.title)}</div>
+      ${r.description ? `<p class="reel-desc">${esc(r.description)}</p>` : ''}
+    </div>
+    <div class="reel-actions">
+      <button class="reel-act like ${r.likedByMe ? 'on' : ''}" onclick="reelLike('${id}')" type="button" aria-label="Like"><i data-lucide="heart"></i><span>${reelFmt(r.likeCount)}</span></button>
+      <button class="reel-act cmt" onclick="openReelComments('${id}')" type="button" aria-label="Comments"><i data-lucide="message-circle"></i><span>${reelFmt(r.commentCount)}</span></button>
+      <button class="reel-act sound" onclick="reelToggleSound()" type="button" aria-label="Sound"><i data-lucide="${Reels.muted ? 'volume-x' : 'volume-2'}"></i></button>
+      ${own ? `<button class="reel-act" onclick="deleteOriginVideo('${id}')" type="button" aria-label="Delete reel"><i data-lucide="trash-2"></i></button>` : ''}
+    </div>
+  </section>`;
+}
+async function loadReelsPage() {
+  const feed = document.getElementById('reelsFeed'); if (!feed) return;
+  stopReels();
+  if (!getToken()) { feed.innerHTML = '<div class="reels-empty"><p>Reels dekhne ke liye login karein.</p></div>'; return; }
+  if (!Reels.items.length) feed.innerHTML = '<div class="reels-empty"><p>Reels load ho rahi hain...</p></div>';
+  try {
+    const data = await apiFetch('/api/videos?action=feed&kind=reel');
+    Reels.items = data.videos || [];
+    Reels.items.forEach(r => Origin.videos.set(r.id, r));
+    renderReels();
+  } catch (e) {
+    feed.innerHTML = `<div class="reels-empty"><div><i data-lucide="cloud-off"></i><h3>Reels load nahi ho payi</h3><p>${esc((e.data && e.data.error) || 'Thodi der baad dobara try karein.')}</p></div></div>`;
+    lucide.createIcons();
+  }
+}
+function renderReels() {
+  const feed = document.getElementById('reelsFeed'); if (!feed) return;
+  if (!Reels.items.length) {
+    feed.innerHTML = '<div class="reels-empty"><div><i data-lucide="film"></i><h3>Abhi koi reel nahi hai</h3><p>Pehli reel aap upload karein.</p><button class="btn btn-primary" onclick="openOriginUpload(\'reel\')" type="button"><i data-lucide="plus"></i>Upload reel</button></div></div>';
+    lucide.createIcons(); return;
+  }
+  feed.innerHTML = Reels.items.map(reelHTML).join('');
+  feed.scrollTop = 0;
+  lucide.createIcons();
+  if (Reels.observer) Reels.observer.disconnect();
+  Reels.observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.7) activateReel(entry.target);
+      else if (!entry.isIntersecting || entry.intersectionRatio < 0.3) { if (entry.target.dataset.reelId === Reels.activeId) deactivateReel(entry.target); }
+    });
+  }, { root: feed, threshold: [0, 0.3, 0.7] });
+  feed.querySelectorAll('.reel').forEach(el => Reels.observer.observe(el));
+}
+function reelDriveSrc(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
+function activateReel(section) {
+  const id = section.dataset.reelId;
+  if (Reels.activeId === id) return;
+  const prev = Reels.activeId && document.querySelector(`.reel[data-reel-id="${Reels.activeId}"]`);
+  if (prev) deactivateReel(prev);
+  const r = Reels.items.find(x => x.id === id); if (!r) return;
+  Reels.activeId = id;
+  const media = section.querySelector('.reel-media');
+  const video = document.createElement('video');
+  video.className = 'reel-video'; video.loop = true; video.muted = Reels.muted; video.preload = 'auto';
+  video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', '');
+  video.addEventListener('playing', () => { media.classList.add('playing'); section.classList.remove('paused'); });
+  video.addEventListener('error', () => reelFallbackIframe(section, r), { once: true });
+  video.src = reelDriveSrc(r.driveFileId);
+  media.appendChild(video);
+  const started = video.play(); if (started && started.catch) started.catch(() => {});
+  // Direct stream na chale (badi file/Drive limit) to 7 second baad Drive ka player dikha do.
+  video._timer = setTimeout(() => { if (Reels.activeId === id && video.readyState < 3) reelFallbackIframe(section, r); }, 7000);
+  const key = 'lx_origin_view_' + id;
+  try { if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, '1'); apiFetch('/api/videos?action=view', { method: 'POST', body: JSON.stringify({ videoId: id }) }).catch(() => {}); } } catch (e) {}
+}
+function deactivateReel(section) {
+  const media = section.querySelector('.reel-media'); if (!media) return;
+  const v = media.querySelector('video');
+  if (v) { clearTimeout(v._timer); v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
+  const f = media.querySelector('iframe'); if (f) f.remove();
+  media.classList.remove('playing'); section.classList.remove('paused');
+  if (Reels.activeId === section.dataset.reelId) Reels.activeId = null;
+}
+function reelFallbackIframe(section, r) {
+  const media = section.querySelector('.reel-media'); if (!media || media.querySelector('iframe')) return;
+  const v = media.querySelector('video'); if (v) { clearTimeout(v._timer); v.pause(); v.remove(); }
+  const frame = document.createElement('iframe');
+  frame.className = 'reel-frame'; frame.allow = 'autoplay; encrypted-media; fullscreen'; frame.setAttribute('allowfullscreen', '');
+  frame.src = 'https://drive.google.com/file/d/' + encodeURIComponent(r.driveFileId) + '/preview';
+  media.appendChild(frame); media.classList.add('playing');
+}
+function stopReels() {
+  if (Reels.observer) { Reels.observer.disconnect(); Reels.observer = null; }
+  document.querySelectorAll('#reelsFeed .reel').forEach(deactivateReel);
+  Reels.activeId = null;
+}
+function reelTap(id) {
+  const section = document.querySelector(`.reel[data-reel-id="${id}"]`); if (!section) return;
+  const v = section.querySelector('video'); if (!v) return;
+  if (v.paused) { v.play().catch(() => {}); section.classList.remove('paused'); } else { v.pause(); section.classList.add('paused'); }
+}
+function reelToggleSound() {
+  Reels.muted = !Reels.muted;
+  const v = document.querySelector('#reelsFeed video'); if (v) { v.muted = Reels.muted; if (!Reels.muted && v.paused) v.play().catch(() => {}); }
+  document.querySelectorAll('#reelsFeed .reel-act.sound').forEach(b => { b.innerHTML = `<i data-lucide="${Reels.muted ? 'volume-x' : 'volume-2'}"></i>`; });
+  lucide.createIcons();
+  if (!Reels.muted) showToast('Sound on', 'volume-2');
+}
+function reelRefreshUi(r) {
+  const s = document.querySelector(`.reel[data-reel-id="${r.id}"]`); if (!s) return;
+  const like = s.querySelector('.reel-act.like'); like.classList.toggle('on', !!r.likedByMe); like.querySelector('span').textContent = reelFmt(r.likeCount);
+  s.querySelector('.reel-act.cmt span').textContent = reelFmt(r.commentCount);
+}
+async function reelLike(id) {
+  const r = Reels.items.find(x => x.id === id); if (!r) return;
+  const before = { liked: !!r.likedByMe, count: Number(r.likeCount) || 0 };
+  r.likedByMe = !before.liked; r.likeCount = Math.max(0, before.count + (before.liked ? -1 : 1)); reelRefreshUi(r);
+  try {
+    const d = await apiFetch('/api/videos?action=like', { method: 'POST', body: JSON.stringify({ videoId: id }) });
+    r.likedByMe = d.liked; r.likeCount = d.likeCount;
+  } catch (e) {
+    r.likedByMe = before.liked; r.likeCount = before.count;
+    showToast((e.data && e.data.error) || 'Like nahi ho paaya', 'alert-circle');
+  }
+  reelRefreshUi(r);
+}
+function reelCommentHTML(c) {
+  const me = State.user && State.user.id;
+  const canDelete = me && (c.userId === me || Reels.ownerId === me);
+  return `<div class="reel-comment" data-comment-id="${originAttr(c.id)}">${originAvatarHTML({ name: c.name, avatarUrl: c.avatarUrl })}
+    <div class="reel-comment-body"><b>${esc(c.name || '')}</b><small>${esc(reelAgo(c.createdAt))}</small><p>${esc(c.body)}</p></div>
+    ${canDelete ? `<button class="reel-comment-del" onclick="deleteReelComment('${esc(c.id)}')" type="button" aria-label="Delete comment"><i data-lucide="trash-2"></i></button>` : ''}</div>`;
+}
+async function openReelComments(id) {
+  Reels.commentsFor = id;
+  const sheet = document.getElementById('reelComments'), list = document.getElementById('reelCommentList');
+  sheet.classList.add('open');
+  list.innerHTML = '<p class="origin-channel-stats" style="padding:20px 0;text-align:center">Comments load ho rahe hain...</p>';
+  try {
+    const d = await apiFetch('/api/videos?action=comments&videoId=' + encodeURIComponent(id));
+    if (Reels.commentsFor !== id) return;
+    Reels.ownerId = d.ownerId;
+    const r = Reels.items.find(x => x.id === id); if (r) { r.commentCount = (d.comments || []).length; reelRefreshUi(r); }
+    document.getElementById('reelCommentsTitle').textContent = 'Comments (' + (d.comments || []).length + ')';
+    list.innerHTML = (d.comments || []).length ? d.comments.map(reelCommentHTML).join('') : '<p class="origin-channel-stats" style="padding:24px 0;text-align:center">Abhi koi comment nahi. Pehla comment aap karein.</p>';
+    lucide.createIcons();
+  } catch (e) { list.innerHTML = `<p class="origin-channel-stats" style="padding:20px 0;text-align:center">${esc((e.data && e.data.error) || 'Comments load nahi ho paaye.')}</p>`; }
+}
+function closeReelComments() { Reels.commentsFor = null; document.getElementById('reelComments').classList.remove('open'); }
+async function postReelComment(event) {
+  event.preventDefault();
+  const id = Reels.commentsFor, input = document.getElementById('reelCommentInput');
+  const body = input.value.trim(); if (!id || !body) return;
+  input.disabled = true;
+  try {
+    const d = await apiFetch('/api/videos?action=comment', { method: 'POST', body: JSON.stringify({ videoId: id, body }) });
+    input.value = '';
+    const list = document.getElementById('reelCommentList');
+    if (!list.querySelector('.reel-comment')) list.innerHTML = '';
+    list.insertAdjacentHTML('afterbegin', reelCommentHTML(d.comment));
+    const r = Reels.items.find(x => x.id === id); if (r) { r.commentCount = d.commentCount; reelRefreshUi(r); }
+    document.getElementById('reelCommentsTitle').textContent = 'Comments (' + d.commentCount + ')';
+    lucide.createIcons();
+  } catch (e) { showToast((e.data && e.data.error) || 'Comment nahi ho paaya', 'alert-circle'); }
+  finally { input.disabled = false; input.focus(); }
+}
+async function deleteReelComment(commentId) {
+  if (!confirm('Ye comment delete karein?')) return;
+  try {
+    const d = await apiFetch('/api/videos?action=comment&id=' + encodeURIComponent(commentId), { method: 'DELETE' });
+    const node = document.querySelector(`.reel-comment[data-comment-id="${commentId}"]`); if (node) node.remove();
+    const r = Reels.items.find(x => x.id === Reels.commentsFor); if (r) { r.commentCount = d.commentCount; reelRefreshUi(r); }
+    document.getElementById('reelCommentsTitle').textContent = 'Comments (' + d.commentCount + ')';
+  } catch (e) { showToast((e.data && e.data.error) || 'Comment delete nahi ho paaya', 'alert-circle'); }
 }
 /* ===== PROFILE PHOTO (crop + upload) ===== */
 const Avatar = { img: null, zoom: 1, base: 1, ox: 0, oy: 0, drag: null };
@@ -3837,9 +4106,19 @@ async function originLoadMine(container) {
     lucide.createIcons();
   } catch (e) { container.innerHTML = '<div class="empty-state"><p>Videos load nahi ho paaye.</p></div>'; }
 }
-function openOriginUpload() {
+function setOriginUploadKind(kind) {
+  Origin.uploadKind = kind === 'reel' ? 'reel' : 'video';
+  const reel = Origin.uploadKind === 'reel';
+  document.querySelectorAll('#originKindToggle button').forEach(b => b.classList.toggle('active', b.dataset.kind === Origin.uploadKind));
+  const label = document.getElementById('originVideoFileLabel');
+  if (label) label.textContent = reel ? 'Reel video (max 90 second, vertical behtar, max 500 MB)' : 'Video file (max 2 GB)';
+  const sub = document.getElementById('originUploadSub');
+  if (sub) sub.textContent = reel ? 'Reel aapke Google Drive me save hogi aur Reels tab me dikhegi. Public playback ke liye link view-only share hoga.' : 'Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.';
+}
+function openOriginUpload(kind) {
   if (!getToken() || !State.user) { showToast('Video upload karne ke liye account me login karein', 'log-in'); return; }
-  if (currentPage !== 'origin') nav('origin');
+  if (currentPage !== 'origin' && currentPage !== 'reels') nav('origin');
+  setOriginUploadKind(kind || (currentPage === 'reels' ? 'reel' : 'video'));
   document.getElementById('originUploadModal').classList.add('open');
   document.getElementById('originUploadStatus').textContent = '';
   lucide.createIcons();
@@ -3938,9 +4217,15 @@ async function uploadOriginVideo() {
   const file = fileInput.files[0];
   const thumbFile = thumbInput && thumbInput.files && thumbInput.files[0];
   const title = titleInput.value.trim();
+  const kind = Origin.uploadKind === 'reel' ? 'reel' : 'video';
   if (!title || !file) { status.textContent = 'Title aur video file select karein.'; return; }
   if (!file.type.startsWith('video/')) { status.textContent = 'Sahi video file select karein.'; return; }
   if (file.size > ORIGIN_MAX_BYTES) { status.textContent = 'Video 2 GB se chhoti honi chahiye.'; return; }
+  if (kind === 'reel') {
+    if (file.size > 500 * 1024 * 1024) { status.textContent = 'Reel 500 MB se chhoti honi chahiye.'; return; }
+    const seconds = await reelVideoDuration(file);
+    if (seconds && seconds > 90.5) { status.textContent = 'Reel 90 second se chhoti honi chahiye (aapki video ' + Math.round(seconds) + ' second ki hai). Lambi video ke liye "Video" option chuno.'; return; }
+  }
   button.disabled = true; progress.hidden = false; progressBar.style.width = '4%';
   let createdDriveId = null;
   let createdThumbId = null;
@@ -3966,11 +4251,12 @@ async function uploadOriginVideo() {
       createdThumbId = await uploadOptionalThumbnail(token, thumbFile);
     }
     progressBar.style.width = '94%'; status.textContent = 'Origin Play par publish ho raha hai...';
-    await apiFetch('/api/videos?action=publish', { method: 'POST', body: JSON.stringify({ title, description: descriptionInput.value.trim(), driveFileId: createdDriveId, mimeType: file.type, sizeBytes: file.size, googleToken: token, thumbnailFileId: createdThumbId || null }) });
+    await apiFetch('/api/videos?action=publish', { method: 'POST', body: JSON.stringify({ title, description: descriptionInput.value.trim(), driveFileId: createdDriveId, mimeType: file.type, sizeBytes: file.size, googleToken: token, thumbnailFileId: createdThumbId || null, kind }) });
     progressBar.style.width = '100%';
-    showToast('Video Origin Play par upload ho gaya', 'circle-play');
+    showToast(kind === 'reel' ? 'Reel upload ho gayi' : 'Video Origin Play par upload ho gaya', kind === 'reel' ? 'film' : 'circle-play');
     closeOriginUpload(); fileInput.value = ''; thumbInput.value = ''; titleInput.value = ''; descriptionInput.value = '';
     if (currentPage === 'origin') loadOriginPage();
+    if (currentPage === 'reels') loadReelsPage();
     if (currentPage === 'profile' && State._profileTab === 'videos') renderProfileTab('videos');
     loadOriginFeed('homeOriginFeed', 3);
   } catch (e) {
@@ -3990,8 +4276,9 @@ async function deleteOriginVideo(videoId) {
     Origin.videos.delete(videoId);
     renderProfileTab('videos');
     if (currentPage === 'origin') loadOriginPage();
+    if (currentPage === 'reels') loadReelsPage();
     loadOriginFeed('homeOriginFeed', 3);
-    showToast('Video delete ho gaya', 'trash-2');
+    showToast('Delete ho gaya', 'trash-2');
   } catch (e) { showToast(e.data && e.data.error || e.message || 'Video delete nahi ho paaya', 'alert-circle'); }
 }
 
@@ -4442,8 +4729,10 @@ function applyUser() {
 
 /* NAV */
 let currentPage = 'home';
-const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
+const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', reels: 'Reels', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
+  if (p !== 'reels' && typeof stopReels === 'function') stopReels();
+  document.body.classList.toggle('reels-surface', p === 'reels');
   if (p !== 'originChat' && Origin.activeChatId) backToOriginChats();
   if (p !== 'originChat') document.body.classList.remove('chat-open');
   if (p !== 'originChat' && Origin.chatRefreshTimer) { clearInterval(Origin.chatRefreshTimer); Origin.chatRefreshTimer = null; }
@@ -4461,6 +4750,7 @@ function nav(p) {
   if (p === 'profile') renderProfileTab(State._profileTab || 'progress');
   if (p === 'home') renderHome();
   if (p === 'origin') loadOriginPage();
+  if (p === 'reels') loadReelsPage();
   if (p === 'originChat') loadOriginChats();
   if (p === 'ai') { renderChatHistory(); renderChatMessages(); }
   if (p === 'settings') applyAllSettings();
@@ -5862,7 +6152,7 @@ Object.assign(window, {
   switchAuth, oauthLogin,
   toggleTheme, setTheme, toggleThemeDropdown, closeThemeDropdown,
   switchCourseTab, searchCourses, switchProfileTab,
-  switchSettingsPanel, toggleSetting, testPush, setFontSize, setSelect, setAIstyle,
+  switchSettingsPanel, toggleSetting, testPush, setOriginUploadKind, openOriginUpload, reelTap, reelLike, reelToggleSound, openReelComments, closeReelComments, postReelComment, deleteReelComment, setFontSize, setSelect, setAIstyle,
   openEditName, closeEditName, saveName,
   addAnotherAccount, logout, exportData, clearProgress, clearChats, resetAll,
   openSidebar, closeSidebar, showToast, toggleMini,
