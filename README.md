@@ -90,6 +90,9 @@ app Drive token silently renew karne ki koshish karega.
    | `GOOGLE_CLIENT_ID` | Required Google OAuth Client ID |
    | `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth Web Client secret; server-only |
    | `SUPABASE_JWT_SECRET` | Supabase Project Settings → API ka legacy JWT secret; server-only |
+| `VAPID_PUBLIC_KEY` | Chat push notifications ke liye public key (neeche dekho) |
+| `VAPID_PRIVATE_KEY` | Push private key; server-only, kabhi frontend me mat daalna |
+| `VAPID_SUBJECT` | `mailto:tumhara-email@gmail.com` |
 
 `SUPABASE_JWT_SECRET` aur `GOOGLE_CLIENT_SECRET` ko kabhi `public/realtime-config.js`
 me mat daalna. Wahan sirf Supabase URL aur anon/public key honi chahiye. Drive
@@ -211,3 +214,16 @@ npm install
 npx vercel dev
 ```
 Ye local server chalayega jahan `/api/*` routes bhi kaam karenge (Vercel CLI install karna padega: `npm i -g vercel`).
+
+## Chat push notifications (app band ho tab bhi)
+
+Jab koi message bhejta hai, receiver ko notification aata hai: **title = bhejne wale ka naam, body = message**.
+Notification par tap karne se seedha usi chat me khulta hai. App khuli ho to system notification ki jagah
+app ke andar toast dikhta hai.
+
+1. Keys banao (ek baar): `npx web-push generate-vapid-keys`
+2. Vercel env me `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` set karo, phir redeploy.
+3. Supabase SQL Editor me updated `schema.sql` dobara run karo (`push_subscriptions` table banegi).
+4. `npm install` (naya dependency: `web-push`).
+5. App me Settings → Notifications → Push notifications ON rakho; pehli tap par permission maangega.
+   Android Chrome par site "Install/Add to Home screen" karne se notifications sabse reliable chalte hain.
