@@ -391,9 +391,47 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // Message relay: drive.file permission me har user sirf apni banayi Drive files dekh sakta hai, isliye
+    // doosre ke bheje messages restart ke baad gayab ho jaate the. Ab har message ki ek chhoti copy yahan
+    // (video_messages) rehti hai; receiver chat kholta hai to wo apni Drive me move ho jaati hai (conversation-migrated).
+    // Push notification bhi yahin se jaati hai (app band ho tab bhi).
     if (req.method === 'POST' && action === 'message') {
       if (!requireUser(user, res)) return;
-      return res.status(410).json({ error: 'Chat storage Drive par move ho gaya hai. Page refresh karke dobara try karein.' });
+      const { recipientId, message, id } = req.body || {};
+      const text = typeof message === 'string' ? message.trim() : '';
+      if (!UUID_RE.test(String(recipientId || '')) || recipientId === user.uid || !text || text.length > 2000 || (id && !UUID_RE.test(String(id)))) {
+        return res.status(400).json({ error: 'Message details valid nahi hain.' });
+      }
+      const pair = [user.uid, recipientId].sort();
+      const allowed = await sql`
+        select 1 where exists(select 1 from video_follows where user_id = ${user.uid} and channel_id = ${recipientId})
+          or exists(select 1 from video_follows where user_id = ${recipientId} and channel_id = ${user.uid})
+          or exists(select 1 from video_conversations where participant_one_id = ${pair[0]} and participant_two_id = ${pair[1]})
+      `;
+      if (!allowed.length) return res.status(403).json({ error: 'Is chat ke liye channel follow hona chahiye.' });
+      const inserted = await sql`
+        insert into video_messages (id, sender_id, recipient_id, message)
+        values (coalesce(${id || null}::uuid, gen_random_uuid()), ${user.uid}, ${recipientId}, ${text})
+        on conflict (id) do nothing
+        returning id, created_at as "createdAt"
+      `;
+      if (!inserted.length) return res.status(200).json({ ok: true, duplicate: true });
+      const convo = await sql`
+        update video_conversations set last_message_preview = ${text.slice(0, 160)}, last_sender_id = ${user.uid}, updated_at = now()
+        where participant_one_id = ${pair[0]} and participant_two_id = ${pair[1]}
+        returning id
+      `;
+      try {
+        const who = await sql`select name from users where id = ${user.uid} limit 1`;
+        const senderName = (who[0] && who[0].name) || user.name || 'Kisi ne';
+        const push = await loadPush();
+        if (push) await push.sendPushToUser(recipientId, {
+          type: 'chat', title: senderName, body: text.slice(0, 140),
+          senderId: user.uid, senderName, conversationId: convo[0] ? convo[0].id : null,
+          url: '/?openChat=' + encodeURIComponent(user.uid) + '&name=' + encodeURIComponent(senderName), ts: Date.now(),
+        });
+      } catch (pushErr) { console.warn('Chat push failed:', pushErr && pushErr.message); }
+      return res.status(201).json({ ok: true, id: inserted[0].id, createdAt: inserted[0].createdAt });
     }
 
     if (req.method === 'POST' && action === 'conversation-migrated') {
@@ -439,7 +477,9 @@ export default async function handler(req, res) {
           where id = ${rows[0].id}
         `;
       }
-      await sql`delete from video_messages where (sender_id = ${user.uid} and recipient_id = ${otherId}) or (sender_id = ${otherId} and recipient_id = ${user.uid})`;
+      // Sirf wo messages hatao jo mujhe aaye the aur ab meri Drive me verify ho gaye. Meri bheji hui copy tab tak rahegi
+      // jab tak samne wala chat khol kar apni Drive me na le le.
+      await sql`delete from video_messages where recipient_id = ${user.uid} and id = any(${legacy.map(message => message.id)}::uuid[])`;
       return res.status(200).json({ ok: true });
     }
 
@@ -484,26 +524,9 @@ export default async function handler(req, res) {
         update video_conversations set updated_at = now(), last_message_preview = ${messagePreview.slice(0, 160)},
           last_sender_id = ${user.uid}
         where id = ${conversationId} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
-        returning id, participant_one_id as "one", participant_two_id as "two"
+        returning id
       `;
       if (!rows.length) return res.status(404).json({ error: 'Conversation nahi mila.' });
-      // Receiver ko push notification: "kisne message kiya" + message. Fail hone par bhi message OK rehta hai.
-      try {
-        const recipientId = rows[0].one === user.uid ? rows[0].two : rows[0].one;
-        const who = await sql`select name from users where id = ${user.uid} limit 1`;
-        const senderName = (who[0] && who[0].name) || user.name || 'Kisi ne';
-        const push = await loadPush();
-        if (push) await push.sendPushToUser(recipientId, {
-          type: 'chat',
-          title: senderName,
-          body: messagePreview.trim().slice(0, 140),
-          senderId: user.uid,
-          senderName,
-          conversationId,
-          url: '/?openChat=' + encodeURIComponent(user.uid) + '&name=' + encodeURIComponent(senderName),
-          ts: Date.now(),
-        });
-      } catch (pushErr) { console.warn('Chat push failed:', pushErr && pushErr.message); }
       return res.status(200).json({ ok: true });
     }
 
@@ -528,6 +551,17 @@ export default async function handler(req, res) {
         on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth
       `;
       return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === 'POST' && action === 'push-test') {
+      if (!requireUser(user, res)) return;
+      const push = await loadPush();
+      if (!push) return res.status(200).json({ ok: false, reason: 'module' });
+      const status = await push.pushStatus();
+      if (!status.packageLoaded) return res.status(200).json({ ok: false, reason: 'package' });
+      if (!status.hasKeys) return res.status(200).json({ ok: false, reason: 'keys' });
+      const result = await push.sendPushToUser(user.uid, { type: 'test', title: 'LearnX', body: 'Test notification aa gayi: push sahi chal raha hai', url: '/', ts: Date.now() });
+      return res.status(200).json({ ok: result.sent > 0, sent: result.sent, reason: result.skipped || (result.sent > 0 ? 'sent' : 'failed') });
     }
 
     if (req.method === 'POST' && action === 'push-unsubscribe') {
