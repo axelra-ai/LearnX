@@ -1995,7 +1995,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
             <div><span class="eyebrow"><i data-lucide="circle-play"></i> Creator videos</span><h1 class="origin-title">Origin Play</h1></div>
             <button class="btn btn-primary" onclick="openOriginUpload()" type="button"><i data-lucide="plus"></i>Upload video</button>
           </div>
-          <label class="origin-search"><i data-lucide="search"></i><input id="originSearchInput" type="search" placeholder="Channel name se search karein" oninput="originSearchChannels()"></label>
+          <label class="origin-search"><i data-lucide="search"></i><input id="originSearchInput" type="search" placeholder="Channel name se search karein (kam se kam 2 akshar)" oninput="originSearchChannels()"></label>
           <div class="origin-channels" id="originChannels"></div>
           <div id="originChannelView" hidden></div>
           <div id="originFeedSection">
@@ -2767,7 +2767,9 @@ async function loadOriginPage() {
   if (detail) { detail.hidden = true; detail.innerHTML = ''; }
   if (section) section.hidden = false;
   const search = document.getElementById('originSearchInput');
-  if (search && !search.value.trim()) originSearchChannels();
+  // Channels ki list ab sirf search karne par dikhti hai; pehle sirf videos.
+  const channelBox = document.getElementById('originChannels');
+  if (channelBox && (!search || !search.value.trim())) channelBox.innerHTML = '';
   await loadOriginFeed();
 }
 function originSearchChannels() {
@@ -2778,6 +2780,7 @@ function originSearchChannels() {
     if (!input || !results) return;
     const sequence = Origin.searchSeq = (Origin.searchSeq || 0) + 1;
     const query = input.value.trim();
+    if (query.length < 2) { results.innerHTML = ''; return; } // khali/1 akshar par koi channel nahi dikhana
     try {
       const data = await apiFetch('/api/videos?action=channels&q=' + encodeURIComponent(query));
       if (sequence !== Origin.searchSeq) return;
