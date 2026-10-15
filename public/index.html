@@ -1508,6 +1508,11 @@ html[data-theme] body .origin-chat-layout{grid-template-columns:minmax(300px,380
 .origin-conversations{padding:4px 0 14px}
 .origin-conversation{gap:14px;padding:11px 18px;border-bottom:0}
 .origin-conversation .origin-avatar{width:52px;height:52px;flex:0 0 52px;font-size:21px;font-weight:600}
+.origin-avatar{aspect-ratio:1/1;border-radius:50%!important;object-fit:cover;flex-shrink:0;min-width:0}
+.origin-avatar-wrap{border-radius:50%}
+.origin-conversation .origin-avatar-wrap{width:52px;height:52px;flex:0 0 52px}
+.origin-conversation .origin-avatar-wrap .origin-avatar{width:100%;height:100%;flex:none}
+.origin-conversation .origin-presence-dot{right:1px;bottom:1px;width:13px;height:13px;border-color:var(--bg)}
 .origin-conversation-top b{font-size:16.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .origin-conversation-top time{font-size:12px}
 .origin-conversation-preview{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:14.5px;color:var(--text-dim)}
@@ -2845,6 +2850,28 @@ async function loadOriginInbox() {
     lucide.createIcons();
   } catch (e) { el.innerHTML = '<p class="origin-channel-stats">Inbox load nahi ho paaya.</p>'; }
 }
+// Jin chats ka last-message preview DB me save nahi hua (purane/failed saves), unka asli last message
+// Drive se padhkar list me dikhao aur server me save kar do (sirf cached Drive token ho tab — popup nahi aata).
+Origin.previewTried = Origin.previewTried || new Set();
+async function backfillChatPreviews() {
+  if (!(Origin.token && Origin.ownerId === (State.user && State.user.id) && Date.now() < Origin.exp)) return;
+  const todo = Origin.chats.filter(c => c.previewMissing && c.driveFolderId && !Origin.previewTried.has(c.channelId)).slice(0, 5);
+  if (!todo.length) return;
+  let changed = false;
+  for (const chat of todo) {
+    Origin.previewTried.add(chat.channelId);
+    try {
+      const messages = await listDriveChatMessages(chat.driveFolderId);
+      const latest = messages[messages.length - 1];
+      if (!latest) continue;
+      const live = Origin.chats.find(c => c.channelId === chat.channelId) || chat;
+      Object.assign(live, { message: latest.message, senderId: latest.senderId, createdAt: latest.createdAt, previewMissing: false });
+      changed = true;
+      apiFetch('/api/videos?action=conversation-preview', { method: 'POST', body: JSON.stringify({ conversationId: chat.conversationId, messagePreview: latest.message, senderId: latest.senderId, messageCreatedAt: latest.createdAt }) }).catch(() => {});
+    } catch (e) { Origin.previewTried.delete(chat.channelId); break; }
+  }
+  if (changed) renderOriginChats();
+}
 async function loadOriginChats() {
   const list = document.getElementById('originConversations');
   if (!list) return;
@@ -2860,6 +2887,7 @@ async function loadOriginChats() {
   try {
     const data = await apiFetch('/api/videos?action=inbox');
     Origin.chats = data.conversations || [];
+    backfillChatPreviews();
     if (Origin.activeChat) {
       const active = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
       if (active) {
@@ -2890,6 +2918,83 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopOriginTyping();
 });
 window.addEventListener('pagehide', () => originPresenceUpdate(false));
+/* ===== PUSH NOTIFICATIONS (chat) ===== */
+function pushSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function pushKeyToBytes(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+async function pushSubscribe(askPermission) {
+  if (!pushSupported() || !getToken() || !Settings.pushNotif) return false;
+  try {
+    if (Notification.permission === 'denied') return false;
+    if (Notification.permission === 'default') {
+      if (!askPermission) return false;
+      if (await Notification.requestPermission() !== 'granted') return false;
+    }
+    const keyData = await apiFetch('/api/videos?action=push-key');
+    if (!keyData.publicKey) return false; // server par VAPID keys set nahi hain
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushKeyToBytes(keyData.publicKey) });
+    await apiFetch('/api/videos?action=push-subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
+    return true;
+  } catch (e) { console.warn('Push subscribe nahi hua:', e); return false; }
+}
+async function pushUnsubscribe() {
+  if (!pushSupported()) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    if (getToken()) await apiFetch('/api/videos?action=push-unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+    await sub.unsubscribe();
+  } catch (e) {}
+}
+async function pushSettingChanged() {
+  if (Settings.pushNotif) {
+    const ok = await pushSubscribe(true);
+    if (!ok && pushSupported() && Notification.permission === 'denied') showToast('Browser/phone settings me notification permission block hai.', 'alert-circle');
+  } else await pushUnsubscribe();
+}
+function initPush() {
+  if (!pushSupported() || !Settings.pushNotif) return;
+  pushSubscribe(false); // permission pehle se mili ho to chupchaap subscribe
+  if (Notification.permission === 'default') {
+    // Permission popup user ke pehle tap par maangte hain (browsers bina gesture ke block kar dete hain)
+    document.addEventListener('click', () => pushSubscribe(true), { once: true });
+  }
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    const msg = event.data || {};
+    if (msg.type === 'chat-push' && msg.data) {
+      const viewing = currentPage === 'originChat' && Origin.activeChatId === msg.data.senderId;
+      if (!viewing) showToast((msg.data.title || 'Naya message') + ': ' + (msg.data.body || ''), 'message-circle');
+      if (currentPage === 'originChat') loadOriginChats();
+    } else if (msg.type === 'open-chat' && msg.senderId) {
+      openChatFromPush(msg.senderId, msg.senderName);
+    }
+  });
+}
+async function openChatFromPush(senderId, senderName) {
+  if (!senderId || !getToken() || !State.user) return;
+  const tokenPromise = originDriveToken();
+  nav('originChat');
+  await loadOriginChats();
+  const chat = Origin.chats.find(c => c.channelId === senderId);
+  openOriginChatThread(senderId, (chat && chat.channelName) || senderName || 'Chat', (chat && chat.avatarUrl) || '', tokenPromise);
+}
+function openChatFromUrl() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('openChat');
+    if (!id) return;
+    history.replaceState(null, '', location.pathname);
+    openChatFromPush(id, params.get('name') || '');
+  } catch (e) {}
+}
 /* ===== PROFILE PHOTO (crop + upload) ===== */
 const Avatar = { img: null, zoom: 1, base: 1, ox: 0, oy: 0, drag: null };
 const AV_BOX = 280;
@@ -4249,6 +4354,7 @@ function enterApp() {
   document.getElementById('authScreen').classList.remove('show');
   document.getElementById('app').classList.add('show');
   startOriginPresence();
+  initPush(); openChatFromUrl();
   checkStreak(); applyUser(); applyAllSettings(); renderAll();
   loadCoursesFromServer().then(() => {
     if (currentPage === 'courses') renderCourseCategories();
@@ -4416,7 +4522,7 @@ function applyAllSettings() {
   applyTheme(); renderShortcuts();
 }
 function switchSettingsPanel(panel) { try { driveUi(); } catch (e) {} document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === panel)); document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); document.querySelectorAll('.settings-mobile-tab').forEach(n => n.classList.toggle('active', n.dataset.sp === panel)); lucide.createIcons(); }
-function toggleSetting(key) { Settings[key] = !Settings[key]; saveSettings(); applyAllSettings(); playSound('click'); const labels = { compact: 'Compact mode', reduceMotion: 'Reduce motion', pushNotif: 'Push notifications', emailNotif: 'Email updates', studyReminder: 'Study reminders', soundFx: 'Sound effects', autoPlay: 'Auto-play', autoSave: 'Auto-save', highContrast: 'High contrast', dyslexicFont: 'Dyslexia font', focusOutline: 'Focus outlines', publicProfile: 'Public profile', showProgress: 'Show progress', analytics: 'Analytics' }; showToast(labels[key] + (Settings[key] ? ' on' : ' off'), Settings[key] ? 'check-circle-2' : 'circle'); }
+function toggleSetting(key) { Settings[key] = !Settings[key]; saveSettings(); applyAllSettings(); playSound('click'); if (key === 'pushNotif') pushSettingChanged(); const labels = { compact: 'Compact mode', reduceMotion: 'Reduce motion', pushNotif: 'Push notifications', emailNotif: 'Email updates', studyReminder: 'Study reminders', soundFx: 'Sound effects', autoPlay: 'Auto-play', autoSave: 'Auto-save', highContrast: 'High contrast', dyslexicFont: 'Dyslexia font', focusOutline: 'Focus outlines', publicProfile: 'Public profile', showProgress: 'Show progress', analytics: 'Analytics' }; showToast(labels[key] + (Settings[key] ? ' on' : ' off'), Settings[key] ? 'check-circle-2' : 'circle'); }
 function setFontSize(el, val) { Settings.fontSize = val; saveSettings(); document.documentElement.style.setProperty('--font-scale', val); document.querySelectorAll('#fontSizePills .option-pill').forEach(p => p.classList.remove('active')); el.classList.add('active'); showToast('Font size updated', 'type'); }
 function setSelect(key, val) { Settings[key] = val; saveSettings(); showToast('Saved', 'check'); }
 function setAIstyle(el, style) { Settings.aiStyle = style; saveSettings(); document.querySelectorAll('#aiStylePills .option-pill').forEach(p => p.classList.remove('active')); el.classList.add('active'); showToast('Style: ' + style, 'sparkles'); }
@@ -5561,6 +5667,7 @@ function logout() {
   if (pending && !driveTokenOk() && !confirm('Kuchh naya data abhi Drive me save nahi hua. Phir bhi log out karein? (Wo data chala jayega)')) return;
   const finish = async () => {
     try { if (!Settings.driveSync && _syncDirty) await flushSync(); } catch (e) {}
+    try { await pushUnsubscribe(); } catch (e) {}
     State.user = null; DB.del('user'); setToken(null); clearLocalUserData();
     document.getElementById('app').classList.remove('show'); document.getElementById('authScreen').classList.add('show');
     switchAuth('login'); closeSidebar();
