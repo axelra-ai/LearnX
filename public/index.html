@@ -1581,10 +1581,16 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
 .reels-feed::-webkit-scrollbar{display:none}
 @media(max-width:768px){.reels-feed{height:calc(100dvh - var(--topbar-h) - 140px);border-radius:14px}}
 .reel{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;background:#000;color:#fff}
+@media(max-width:768px){
+  body.reels-surface .content{padding:0!important;max-width:none}
+  body.reels-surface .reels-wrap{max-width:none;margin:0}
+  body.reels-surface .reels-feed{height:var(--reel-h,calc(100dvh - 128px));border-radius:0}
+  body.reels-surface .reels-upload{top:10px;right:10px}
+}
 .reel-media{position:absolute;inset:0;cursor:pointer}
 .reel-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .25s}
 .reel-media.playing .reel-poster{opacity:0}
-.reel-video,.reel-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;border:0}
+.reel-video,.reel-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;border:0}
 .reel-shade{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(transparent,rgba(0,0,0,.78));pointer-events:none}
 .reel-info{position:absolute;left:14px;right:78px;bottom:16px;z-index:2;pointer-events:none}
 .reel-info button{pointer-events:auto}
@@ -3139,7 +3145,7 @@ function reelHTML(r) {
 }
 async function loadReelsPage() {
   const feed = document.getElementById('reelsFeed'); if (!feed) return;
-  stopReels();
+  stopReels(); reelLayout();
   if (!getToken()) { feed.innerHTML = '<div class="reels-empty"><p>Reels dekhne ke liye login karein.</p></div>'; return; }
   if (!Reels.items.length) feed.innerHTML = '<div class="reels-empty"><p>Reels load ho rahi hain...</p></div>';
   try {
@@ -3158,6 +3164,7 @@ function renderReels() {
     feed.innerHTML = '<div class="reels-empty"><div><i data-lucide="film"></i><h3>Abhi koi reel nahi hai</h3><p>Pehli reel aap upload karein.</p><button class="btn btn-primary" onclick="openOriginUpload(\'reel\')" type="button"><i data-lucide="plus"></i>Upload reel</button></div></div>';
     lucide.createIcons(); return;
   }
+  reelLayout();
   feed.innerHTML = Reels.items.map(reelHTML).join('');
   feed.scrollTop = 0;
   lucide.createIcons();
@@ -3170,7 +3177,39 @@ function renderReels() {
   }, { root: feed, threshold: [0, 0.3, 0.7] });
   feed.querySelectorAll('.reel').forEach(el => Reels.observer.observe(el));
 }
-function reelDriveSrc(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
+function reelSources(id) {
+  const e = encodeURIComponent(id);
+  return [
+    'https://drive.usercontent.google.com/download?id=' + e + '&export=download&confirm=t',
+    'https://drive.google.com/uc?export=download&confirm=t&id=' + e
+  ];
+}
+function reelLayout() {
+  try {
+    const tb = document.querySelector('.topbar'), nav = document.querySelector('.mobile-nav');
+    const top = tb ? tb.getBoundingClientRect().bottom : 0;
+    const navH = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect().height : 0;
+    const h = Math.max(260, Math.round((window.innerHeight || document.documentElement.clientHeight) - Math.max(0, top) - navH));
+    document.documentElement.style.setProperty('--reel-h', h + 'px');
+  } catch (e) {}
+}
+window.addEventListener('resize', () => { if (document.body.classList.contains('reels-surface')) reelLayout(); });
+function reelTrySource(section, r, video, index) {
+  const list = reelSources(r.driveFileId);
+  if (index >= list.length) { reelFallbackIframe(section, r); return; }
+  clearTimeout(video._timer);
+  video._i = index;
+  video.src = list[index];
+  const started = video.play();
+  if (started && started.catch) started.catch(err => {
+    if (err && err.name === 'NotAllowedError') {
+      if (!video.muted) { video.muted = true; video.play().catch(() => section.classList.add('paused')); }
+      else section.classList.add('paused');
+    }
+  });
+  // Ye source 6 second me na chale to agla source try karo
+  video._timer = setTimeout(() => { if (Reels.activeId === r.id && video.readyState < 3 && video._i === index) reelTrySource(section, r, video, index + 1); }, 6000);
+}
 function activateReel(section) {
   const id = section.dataset.reelId;
   if (Reels.activeId === id) return;
@@ -3180,15 +3219,16 @@ function activateReel(section) {
   Reels.activeId = id;
   const media = section.querySelector('.reel-media');
   const video = document.createElement('video');
-  video.className = 'reel-video'; video.loop = true; video.muted = Reels.muted; video.preload = 'auto';
+  video.className = 'reel-video'; video.loop = true; video.muted = Reels.muted; video.preload = 'auto'; video.autoplay = true;
   video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', '');
-  video.addEventListener('playing', () => { media.classList.add('playing'); section.classList.remove('paused'); });
-  video.addEventListener('error', () => reelFallbackIframe(section, r), { once: true });
-  video.src = reelDriveSrc(r.driveFileId);
+  video.addEventListener('playing', () => { clearTimeout(video._timer); media.classList.add('playing'); section.classList.remove('paused'); });
+  video.addEventListener('loadedmetadata', () => {
+    // Seedhi (portrait) video poori screen bhare, chaudi (landscape) video kategi nahi
+    video.style.objectFit = (video.videoWidth && video.videoHeight && video.videoWidth > video.videoHeight * 1.05) ? 'contain' : 'cover';
+  });
+  video.addEventListener('error', () => { if (Reels.activeId === id) reelTrySource(section, r, video, (video._i || 0) + 1); });
   media.appendChild(video);
-  const started = video.play(); if (started && started.catch) started.catch(() => {});
-  // Direct stream na chale (badi file/Drive limit) to 7 second baad Drive ka player dikha do.
-  video._timer = setTimeout(() => { if (Reels.activeId === id && video.readyState < 3) reelFallbackIframe(section, r); }, 7000);
+  reelTrySource(section, r, video, 0);
   const key = 'lx_origin_view_' + id;
   try { if (!sessionStorage.getItem(key)) { sessionStorage.setItem(key, '1'); apiFetch('/api/videos?action=view', { method: 'POST', body: JSON.stringify({ videoId: id }) }).catch(() => {}); } } catch (e) {}
 }
