@@ -158,3 +158,25 @@ create table if not exists push_subscriptions (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_push_subscriptions_user on push_subscriptions(user_id);
+
+-- ===== Reels (chhoti vertical videos) + likes + comments =====
+-- Reel ki video file bhi creator ki Google Drive me rehti hai; yahan sirf metadata, likes aur comments (chhote text rows).
+alter table videos add column if not exists kind text not null default 'video';
+create index if not exists idx_videos_kind_feed on videos(kind, created_at desc);
+
+create table if not exists video_likes (
+  video_id uuid not null references videos(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (video_id, user_id)
+);
+create index if not exists idx_video_likes_user on video_likes(user_id);
+
+create table if not exists video_comments (
+  id uuid primary key default gen_random_uuid(),
+  video_id uuid not null references videos(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 500),
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_video_comments_video on video_comments(video_id, created_at desc);
