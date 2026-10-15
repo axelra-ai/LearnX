@@ -2160,6 +2160,7 @@ button,.btn,.btn-icon,.side-nav,.side-user,.mnav,.tab,.section-tab,.topbar,.mobi
                   <h3><i data-lucide="bell"></i> Notifications</h3>
                   <p class="sub">Control updates you receive.</p>
                   <div class="setting-row"><div class="setting-info"><b>Push notifications</b></div><div class="setting-control"><div class="toggle" id="pushToggle" onclick="toggleSetting('pushNotif')"></div></div></div>
+                  <div class="setting-row"><div class="setting-info"><b>Test notification</b><small>Check karo ki is device par notification aa rahi hai</small></div><div class="setting-control"><button class="btn btn-secondary btn-sm" onclick="testPush()" type="button">Test</button></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Email updates</b></div><div class="setting-control"><div class="toggle" id="emailToggle" onclick="toggleSetting('emailNotif')"></div></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Study reminders</b></div><div class="setting-control"><div class="toggle" id="reminderToggle" onclick="toggleSetting('studyReminder')"></div></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Sound effects</b></div><div class="setting-control"><div class="toggle" id="soundToggle" onclick="toggleSetting('soundFx')"></div></div></div>
@@ -2952,6 +2953,26 @@ async function pushUnsubscribe() {
     await sub.unsubscribe();
   } catch (e) {}
 }
+async function testPush() {
+  if (!pushSupported()) { showToast('Ye browser/app push notification support nahi karta. Chrome me site kholo ya Add to Home screen karo.', 'alert-circle'); return; }
+  if (!Settings.pushNotif) { showToast('Pehle Push notifications ON karo.', 'info'); return; }
+  const subscribed = await pushSubscribe(true);
+  if (Notification.permission === 'denied') { showToast('Notification permission block hai. Phone/browser site settings me Allow karo.', 'alert-circle'); return; }
+  try {
+    const r = await apiFetch('/api/videos?action=push-test', { method: 'POST', body: JSON.stringify({}) });
+    const reasons = {
+      module: 'Server par push.js load nahi hui (lib/push.js file check karo).',
+      package: 'Server par web-push package install nahi hai (package.json update karke redeploy karo).',
+      keys: 'Vercel me VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY set nahi hain (set karke redeploy karo).',
+      'not-configured': 'VAPID keys galat hain ya VAPID_SUBJECT ka format galat hai (mailto:email).',
+      'no-subscriptions': subscribed ? 'Subscription save nahi hui, dobara try karo.' : 'Is device ka subscription nahi bana (permission/Push key check karo).',
+      'db-error': 'Supabase me schema.sql run karo (push_subscriptions table missing hai).',
+      failed: 'Notification bhejne me error aaya. Vercel logs dekho.'
+    };
+    if (r.ok) showToast('Test notification bhej di. Kuch second me aani chahiye.', 'check-circle-2');
+    else showToast(reasons[r.reason] || 'Notification test fail hua.', 'alert-circle');
+  } catch (e) { showToast((e.data && e.data.error) || 'Test request fail hui. Server/deploy check karo.', 'alert-circle'); }
+}
 async function pushSettingChanged() {
   if (Settings.pushNotif) {
     const ok = await pushSubscribe(true);
@@ -3154,17 +3175,29 @@ async function sendDriveChatMessage(channelId, message, tokenPromise = null, cha
   if (ChatRealtime.status === 'SUBSCRIBED') {
     try { realtimeSent = await sendOriginRealtime('message', record); } catch (e) {}
   }
+  // 1) Server copy: samne wale ko restart ke baad bhi message dikhe aur push notification jaaye.
+  let relayed = false;
+  try {
+    await apiFetch('/api/videos?action=message', { method: 'POST', body: JSON.stringify({ recipientId: channelId, message, id }) });
+    relayed = true;
+  } catch (error) { console.warn('Message relay fail:', error); }
+  // 2) Meri Drive me archive copy. Server copy ho chuki ho to Drive fail hone par bhi message bheja hua maana jaayega.
   try {
     await uploadDriveChatMessage(conversation.driveFolderId, record, conversation.knownIds);
+  } catch (error) {
+    if (!relayed) {
+      if (realtimeSent) { try { await sendOriginRealtime('message-delete', { id }); } catch (e) {} }
+      throw error;
+    }
+    console.warn('Drive save fail hua, server copy safe hai:', error);
+  }
+  if (!relayed && conversation.conversationId) {
     try { await apiFetch('/api/videos?action=conversation-activity', {
       method: 'POST', body: JSON.stringify({ conversationId: conversation.conversationId, messagePreview: message, senderId: State.user.id })
     }); } catch (error) { console.warn('Chat activity update failed after Drive save:', error); }
-    if (realtimeSent) { try { await sendOriginRealtime('message-saved', { id, driveFileId: record.driveFileId }); } catch (e) {} }
-    return record;
-  } catch (error) {
-    if (realtimeSent) { try { await sendOriginRealtime('message-delete', { id }); } catch (e) {} }
-    throw error;
   }
+  if (realtimeSent) { try { await sendOriginRealtime('message-saved', { id, driveFileId: record.driveFileId }); } catch (e) {} }
+  return record;
 }
 function chatRealtimeTopic(channelId) {
   const participants = [String(State.user.id), String(channelId)].sort();
@@ -5814,7 +5847,7 @@ Object.assign(window, {
   switchAuth, oauthLogin,
   toggleTheme, setTheme, toggleThemeDropdown, closeThemeDropdown,
   switchCourseTab, searchCourses, switchProfileTab,
-  switchSettingsPanel, toggleSetting, setFontSize, setSelect, setAIstyle,
+  switchSettingsPanel, toggleSetting, testPush, setFontSize, setSelect, setAIstyle,
   openEditName, closeEditName, saveName,
   addAnotherAccount, logout, exportData, clearProgress, clearChats, resetAll,
   openSidebar, closeSidebar, showToast, toggleMini,
