@@ -1,5 +1,6 @@
 import { sql } from '../lib/db.js';
 import { getUserFromReq } from '../lib/auth.js';
+import { sendPushToUser, pushPublicKey } from '../lib/push.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
@@ -188,8 +189,9 @@ export default async function handler(req, res) {
       if (!relationship.length) return res.status(403).json({ error: 'Is chat ke liye channel follow hona chahiye.' });
       const peerRows = await sql`select email from users where id = ${otherId} limit 1`;
       const pair = [user.uid, otherId].sort();
+      // conversationId bhi bhejo: frontend isi se preview/read-receipt/activity update karta hai.
       const conversation = await sql`
-        select id, drive_folder_id as "driveFolderId" from video_conversations
+        select id, id as "conversationId", drive_folder_id as "driveFolderId" from video_conversations
         where participant_one_id = ${pair[0]} and participant_two_id = ${pair[1]} limit 1
       `;
       const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
@@ -297,7 +299,8 @@ export default async function handler(req, res) {
         select c.id as "conversationId", c.drive_folder_id as "driveFolderId",
           case when c.participant_one_id = ${user.uid} then c.participant_two_id else c.participant_one_id end as "channelId",
           u.name as "channelName", u.email as "channelEmail", u.avatar_url as "avatarUrl", c.last_sender_id as "senderId",
-          coalesce(c.last_message_preview, 'Open to view messages') as message, c.updated_at as "createdAt",
+          coalesce(c.last_message_preview, 'Open to view messages') as message,
+          (c.last_message_preview is null) as "previewMissing", c.updated_at as "createdAt",
           case when c.last_sender_id = ${user.uid} then
             case when c.participant_one_id = ${user.uid} then coalesce(c.last_read_two_at >= c.updated_at, false)
               else coalesce(c.last_read_one_at >= c.updated_at, false) end
@@ -469,14 +472,62 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'conversation-activity') {
       if (!requireUser(user, res)) return;
       const { conversationId, messagePreview, senderId } = req.body || {};
-      if (senderId !== user.uid || typeof messagePreview !== 'string' || !messagePreview.trim()) return res.status(400).json({ error: 'Chat preview details valid nahi hain.' });
+      if (senderId !== user.uid || typeof messagePreview !== 'string' || !messagePreview.trim() || !UUID_RE.test(String(conversationId || ''))) {
+        return res.status(400).json({ error: 'Chat preview details valid nahi hain.' });
+      }
       const rows = await sql`
         update video_conversations set updated_at = now(), last_message_preview = ${messagePreview.slice(0, 160)},
           last_sender_id = ${user.uid}
-        where id = ${String(conversationId || '')} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
-        returning id
+        where id = ${conversationId} and (participant_one_id = ${user.uid} or participant_two_id = ${user.uid})
+        returning id, participant_one_id as "one", participant_two_id as "two"
       `;
-      return res.status(rows.length ? 200 : 404).json(rows.length ? { ok: true } : { error: 'Conversation nahi mila.' });
+      if (!rows.length) return res.status(404).json({ error: 'Conversation nahi mila.' });
+      // Receiver ko push notification: "kisne message kiya" + message. Fail hone par bhi message OK rehta hai.
+      try {
+        const recipientId = rows[0].one === user.uid ? rows[0].two : rows[0].one;
+        const who = await sql`select name from users where id = ${user.uid} limit 1`;
+        const senderName = (who[0] && who[0].name) || user.name || 'Kisi ne';
+        await sendPushToUser(recipientId, {
+          type: 'chat',
+          title: senderName,
+          body: messagePreview.trim().slice(0, 140),
+          senderId: user.uid,
+          senderName,
+          conversationId,
+          url: '/?openChat=' + encodeURIComponent(user.uid) + '&name=' + encodeURIComponent(senderName),
+          ts: Date.now(),
+        });
+      } catch (pushErr) { console.warn('Chat push failed:', pushErr && pushErr.message); }
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === 'GET' && action === 'push-key') {
+      return res.status(200).json({ publicKey: pushPublicKey() });
+    }
+
+    if (req.method === 'POST' && action === 'push-subscribe') {
+      if (!requireUser(user, res)) return;
+      const sub = (req.body && req.body.subscription) || {};
+      const keys = sub.keys || {};
+      let endpoint;
+      try { endpoint = new URL(String(sub.endpoint || '')); } catch (e) { endpoint = null; }
+      if (!endpoint || endpoint.protocol !== 'https:' || String(sub.endpoint).length > 1000 ||
+          typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string' || keys.p256dh.length > 200 || keys.auth.length > 100) {
+        return res.status(400).json({ error: 'Push subscription valid nahi hai.' });
+      }
+      await sql`
+        insert into push_subscriptions (endpoint, user_id, p256dh, auth)
+        values (${String(sub.endpoint)}, ${user.uid}, ${keys.p256dh}, ${keys.auth})
+        on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth
+      `;
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === 'POST' && action === 'push-unsubscribe') {
+      if (!requireUser(user, res)) return;
+      const endpoint = String((req.body && req.body.endpoint) || '');
+      await sql`delete from push_subscriptions where user_id = ${user.uid} and endpoint = ${endpoint}`;
+      return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'DELETE' && action === 'message') {
