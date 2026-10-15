@@ -88,19 +88,14 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET' && action === 'channels') {
       const query = String(req.query.q || '').trim().slice(0, 80);
-      const rows = query
-        ? await sql`
+      // Bina search ke users ki list nahi dete (koi bhi kisi ko dhundkar message na kar sake). Kam se kam 2 akshar chahiye.
+      if (query.length < 2) return res.status(200).json({ channels: [] });
+      const rows = await sql`
             select u.id, u.name, u.avatar_url as "avatarUrl",
               count(v.id)::int as "videoCount", coalesce(sum(v.view_count), 0)::bigint as "viewCount"
             from users u left join videos v on v.user_id = u.id
-            where u.name ilike ${'%' + query + '%'}
+            where u.name ilike ${'%' + query.replace(/[\\%_]/g, '\\$&') + '%'}
             group by u.id order by count(v.id) desc, u.name asc limit 20
-          `
-        : await sql`
-            select u.id, u.name, u.avatar_url as "avatarUrl",
-              count(v.id)::int as "videoCount", coalesce(sum(v.view_count), 0)::bigint as "viewCount"
-            from users u left join videos v on v.user_id = u.id
-            group by u.id order by max(u.created_at) desc limit 20
           `;
       return res.status(200).json({ channels: rows });
     }
