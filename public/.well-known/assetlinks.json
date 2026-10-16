@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.learnxtech.twa",
+      "sha256_cert_fingerprints": [
+        "A7:15:B8:F2:B2:A2:75:D1:51:27:A6:4B:82:C8:52:12:7F:46:78:4B:D1:24:C3:95:79:6B:2D:93:96:E1:C3:EB"
+      ]
+    }
+  }
+]
