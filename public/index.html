@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#161615">
+<meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="LearnX">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://drive.usercontent.google.com" crossorigin>
 <link rel="dns-prefetch" href="https://drive.usercontent.google.com">
 <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -1243,43 +1243,36 @@ body.focus-mode .focus-exit{display:flex}
    bold sans type, blue accent). Sab purane styles ke baad, taaki wahi jeete.
    ========================================================================== */
 @keyframes goldShift{0%,100%{background-position:0 0}}
-/* ===== LearnX: sirf 2 themes — Light aur Dark ===== */
 :root,[data-theme="dark"]{
-  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --serif:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --topbar-h:56px;
-  --accent-rgb:212,165,116;
-  --bg:#161615;--bg-2:#1b1b1a;--bg-3:#222221;--bg-elev:#262624;
-  --surface:#1e1e1d;--surface-2:#262624;--surface-3:#2e2e2c;--surface-solid:#1e1e1d;
-  --border:#2e2e2b;--border-2:#3d3d39;--border-glow:rgba(212,165,116,.55);
-  --text:#ecebe6;--text-2:#d8d6cf;--text-dim:#a6a49c;--text-dimmer:#807e77;--text-muted:#5f5d57;
-  --accent:#d4a574;--accent-hover:#e0b886;--accent-light:#d4a574;--accent-lighter:#ecd2ae;
-  --accent-soft:rgba(212,165,116,.3);--accent-bg:rgba(212,165,116,.12);
-  --success:#7fb685;--success-bg:rgba(127,182,133,.14);--warn:#e0b24f;--warn-bg:rgba(224,178,79,.14);
-  --danger:#e07a73;--danger-bg:rgba(224,122,115,.12);--info:#8fb0d6;--info-bg:rgba(143,176,214,.14);
+  --accent-rgb:29,155,240;
+  --bg:#000;--bg-2:#000;--bg-3:#16181c;--bg-elev:#16181c;
+  --surface:#000;--surface-2:#16181c;--surface-3:#1d1f23;--surface-solid:#000;
+  --border:#2f3336;--border-2:#3e4144;--border-glow:rgba(29,155,240,.7);
+  --text:#e7e9ea;--text-dim:#8b98a5;--text-dimmer:#71767b;--text-muted:#536471;
+  --accent:#1d9bf0;--accent-hover:#1a8cd8;--accent-light:#1d9bf0;--accent-lighter:#8ecdf8;
+  --accent-soft:rgba(29,155,240,.3);--accent-bg:rgba(29,155,240,.1);
+  --success:#00ba7c;--success-bg:rgba(0,186,124,.12);--warn:#ffd400;--warn-bg:rgba(255,212,0,.12);
+  --danger:#f4212e;--danger-bg:rgba(244,33,46,.1);--info:#1d9bf0;--info-bg:rgba(29,155,240,.12);
   --grad-gold:linear-gradient(var(--accent),var(--accent));
-  --grad-gold-soft:linear-gradient(rgba(212,165,116,.12),rgba(212,165,116,.12));
-  --r-xs:6px;--r-sm:12px;--r:16px;--r-lg:18px;--r-xl:22px;--r-2xl:28px;
+  --grad-gold-soft:linear-gradient(rgba(29,155,240,.1),rgba(29,155,240,.1));
+  --r-xs:6px;--r-sm:12px;--r:16px;--r-lg:16px;--r-xl:16px;--r-2xl:16px;
   --sh-xs:none;--sh-sm:none;--sh:none;--sh-md:none;--sh-inner:none;--sh-glow:none;--sh-glow-strong:none;
-  --sh-lg:0 12px 36px rgba(0,0,0,.45);--sh-xl:0 18px 48px rgba(0,0,0,.5);
-  --hover:rgba(236,235,230,.08);--hover-soft:rgba(236,235,230,.035);--topbar-bg:rgba(22,22,21,.82);
-  --sidebar-bg:#161615;--nav-bg:rgba(22,22,21,.94);--input-bg:#1e1e1d;
+  --sh-lg:rgba(255,255,255,.2) 0 0 15px,rgba(255,255,255,.15) 0 0 3px 1px;--sh-xl:rgba(255,255,255,.2) 0 0 15px,rgba(255,255,255,.15) 0 0 3px 1px;
+  --hover:rgba(231,233,234,.1);--hover-soft:rgba(231,233,234,.03);--topbar-bg:rgba(0,0,0,.65);
 }
 [data-theme="light"]{
-  --accent-rgb:148,105,58;
-  --bg:#f6f5f1;--bg-2:#efeee9;--bg-3:#e8e7e1;--bg-elev:#ffffff;
-  --surface:#ffffff;--surface-2:#f1f0ec;--surface-3:#e9e8e3;--surface-solid:#ffffff;
-  --border:#e4e2db;--border-2:#d3d1c9;--border-glow:rgba(148,105,58,.5);
-  --text:#1b1b19;--text-2:#34332f;--text-dim:#67655e;--text-dimmer:#85837b;--text-muted:#a9a79f;
-  --accent:#94693a;--accent-hover:#7d5730;--accent-light:#b98c58;--accent-lighter:#d9b98c;
-  --accent-soft:rgba(148,105,58,.28);--accent-bg:rgba(148,105,58,.1);
-  --success:#3f8a53;--success-bg:rgba(63,138,83,.12);--warn:#a9791a;--warn-bg:rgba(169,121,26,.12);
-  --danger:#c0443d;--danger-bg:rgba(192,68,61,.1);--info:#3e6fa3;--info-bg:rgba(62,111,163,.12);
-  --grad-gold:linear-gradient(var(--accent),var(--accent));
-  --grad-gold-soft:linear-gradient(rgba(148,105,58,.1),rgba(148,105,58,.1));
-  --sh-lg:0 12px 32px rgba(30,28,20,.14);--sh-xl:0 18px 44px rgba(30,28,20,.18);
-  --hover:rgba(27,27,25,.07);--hover-soft:rgba(27,27,25,.03);--topbar-bg:rgba(246,245,241,.86);
-  --sidebar-bg:#f6f5f1;--nav-bg:rgba(246,245,241,.95);--input-bg:#ffffff;
+  --bg:#fff;--bg-2:#f7f9f9;--bg-3:#eff3f4;--bg-elev:#fff;
+  --surface:#fff;--surface-2:#f7f9f9;--surface-3:#eff3f4;--surface-solid:#fff;
+  --border:#eff3f4;--border-2:#cfd9de;
+  --text:#0f1419;--text-2:#0f1419;--text-dim:#536471;--text-dimmer:#536471;--text-muted:#8b98a5;
+  --accent:#1d9bf0;--accent-hover:#1a8cd8;--accent-light:#1d9bf0;--accent-lighter:#8ecdf8;
+  --accent-soft:rgba(29,155,240,.25);--accent-bg:rgba(29,155,240,.1);
+  --success:#00ba7c;--danger:#f4212e;
+  --sh-lg:rgba(101,119,134,.2) 0 0 15px,rgba(101,119,134,.15) 0 0 3px 1px;--sh-xl:rgba(101,119,134,.2) 0 0 15px,rgba(101,119,134,.15) 0 0 3px 1px;
+  --hover:rgba(15,20,25,.1);--hover-soft:rgba(15,20,25,.03);--topbar-bg:rgba(255,255,255,.85);
 }
 
 /* ---- base: type + background ---- */
@@ -1469,7 +1462,7 @@ html[data-theme] body .splash-brand{font-family:var(--sans);font-weight:900}
 /* ---- drive banner, misc ---- */
 html[data-theme] body .drive-banner{background:var(--bg);border:0;box-shadow:var(--sh-lg);border-radius:16px}
 html[data-theme] body .op-card,html[data-theme] body .op-modal{border-radius:16px}
-::selection{background:rgba(var(--accent-rgb),.35)}
+::selection{background:rgba(29,155,240,.35)}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:9999px;border:3px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
 @media(max-width:768px){
   html body .content{padding:14px 14px 96px}
@@ -1656,104 +1649,48 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
 .origin-kind-toggle button.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .origin-reel-badge{position:absolute;left:10px;top:10px;z-index:2;padding:3px 9px;border-radius:100px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em}
 
-/* =====================================================================
-   LearnX — Light + Dark (final layer): calm neutral surfaces, ek warm accent,
-   serif headings, aur AI page ek chat-home ki tarah.
-   ===================================================================== */
-html[data-theme] body{font-weight:400}
-html[data-theme] body :is(h3,h4,h5,h6){font-family:var(--sans);font-weight:600;letter-spacing:-.01em}
-html[data-theme] body :is(h1,h2,.topbar-title,.home-hero h1,.page-head h1,.profile-info h2){font-family:var(--serif);font-weight:500;letter-spacing:-.015em}
-html[data-theme] body :is(b,strong){font-weight:600}
-html[data-theme] body .btn{font-weight:600}
-html[data-theme] body .topbar-title{font-size:19px}
-html[data-theme="dark"] body :is(.btn-primary,.avatar,.side-nav .badge){color:#1a1a18}
-html[data-theme="dark"] body .side-brand-mark svg{color:#1a1a18}
-
-/* sidebar: shaant list, bade icons nahi */
-html[data-theme] body .side-brand{font-size:20px;font-weight:700;letter-spacing:-.02em;padding:12px 12px 14px;gap:10px}
-html[data-theme] body .side-brand-mark{width:34px;height:34px;border-radius:10px}
-html[data-theme] body .side-brand-mark svg{width:19px;height:19px}
-html[data-theme] body .side-nav{width:auto;max-width:none;padding:9px 12px;border-radius:12px;font-size:14.5px;font-weight:500;gap:12px}
-html[data-theme] body .side-nav svg{width:19px;height:19px;stroke-width:1.8}
-html[data-theme] body .side-nav.active{background:var(--hover);font-weight:600}
-html[data-theme] body .side-nav.active svg{stroke-width:2}
-html[data-theme] body .side-user{border-radius:14px}
-html[data-theme] body .theme-select-btn .theme-dot.light,html[data-theme] body .theme-option-row .theme-dot.light{background:linear-gradient(135deg,#f6f5f1 50%,#e4e2db 50%)}
-html[data-theme] body .theme-select-btn .theme-dot.dark,html[data-theme] body .theme-option-row .theme-dot.dark{background:linear-gradient(135deg,#2e2e2c 50%,#161615 50%)}
-
-/* ---------- AI page ---------- */
-html[data-theme] body.on-ai-page .content{padding:0;max-width:none}
-html[data-theme] body #page-ai>.page-head{display:none}
-html[data-theme] body #page-ai .ai-fullpage{height:calc(100dvh - var(--topbar-h));min-height:0;max-height:none;border:0;border-radius:0;background:var(--bg);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;overflow:hidden}
-.ai-topbar{display:flex;align-items:center;gap:2px;padding:10px 12px;flex-shrink:0}
-.ai-top-spacer{flex:1}
-.ai-top-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:transparent;border:0;color:var(--text);cursor:pointer;transition:background .2s}
-.ai-top-btn:hover{background:var(--hover)}
-.ai-top-btn svg{width:21px;height:21px;stroke-width:1.8}
-.ai-top-menu{display:none}
-html[data-theme] body #page-ai .ai-history-drawer{border-radius:0;background:var(--surface-solid);border-color:var(--border)}
-
-/* messages */
-html[data-theme] body #page-ai .ai-fullpage-body{padding:4px 16px 24px;gap:24px}
-html[data-theme] body #page-ai .msg{display:flex;width:100%;max-width:760px;margin:0 auto}
-html[data-theme] body #page-ai .msg-avatar{display:none}
-html[data-theme] body #page-ai .msg.user{justify-content:flex-end}
-html[data-theme] body #page-ai .msg.user .msg-bubble{max-width:86%;background:var(--surface-3);color:var(--text);border:0;border-radius:20px;padding:10px 16px;font-size:15px;line-height:1.6;font-weight:400;animation:none;box-shadow:none}
-html[data-theme] body #page-ai .msg.ai .msg-bubble{flex:1;min-width:0;max-width:100%;background:transparent;border:0;padding:0;font-size:15.5px;line-height:1.75}
-html[data-theme] body #page-ai .msg-bubble pre{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
-html[data-theme] body #page-ai .msg-bubble code{background:var(--surface-3)}
-html[data-theme] body #page-ai .msg-action{background:transparent;border:0;color:var(--text-dimmer)}
-html[data-theme] body #page-ai .msg-action:hover{background:var(--hover);color:var(--text)}
-
-/* empty state: mark + greeting + quiet starters */
-html[data-theme] body #page-ai .ai-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:100%;padding:0 20px}
-.ai-empty-mark{color:var(--accent);margin-bottom:18px;display:grid;place-items:center}
-.ai-empty-mark svg{width:44px;height:44px;stroke-width:1.5}
-.ai-greet{font-family:var(--serif)!important;font-weight:500!important;font-size:clamp(1.7rem,6.4vw,2.4rem);letter-spacing:-.02em;color:var(--text);margin:0}
-html[data-theme] body #page-ai .ai-starters{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:600px;margin:26px auto 0}
-html[data-theme] body #page-ai .starter{display:flex;gap:6px;align-items:baseline;padding:8px 14px;border-radius:999px;background:transparent;border:1px solid var(--border-2);backdrop-filter:none;-webkit-backdrop-filter:none}
-html[data-theme] body #page-ai .starter:hover{background:var(--hover);transform:none;box-shadow:none}
-html[data-theme] body #page-ai .starter-title{margin:0;font-family:var(--sans);font-weight:500;font-size:13.5px}
-html[data-theme] body #page-ai .starter-desc{font-size:13.5px}
-
-/* composer */
-html[data-theme] body #page-ai .ai-fullpage-input-wrap{position:relative;z-index:5;padding:6px 12px calc(12px + env(safe-area-inset-bottom));background:transparent;border:0}
-html[data-theme] body #page-ai .ai-attach-bar{max-width:760px;margin:0 auto;padding:0 4px 8px}
-html[data-theme] body #page-ai .ai-composer{max-width:760px;margin:0 auto;background:var(--surface);border:1px solid var(--border-2);border-radius:26px;padding:14px 14px 10px 18px;transition:border-color .2s;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-html[data-theme] body #page-ai .ai-composer:focus-within{border-color:var(--text-dimmer)}
-html[data-theme] body #page-ai .ai-composer textarea{display:block;width:100%;background:none;border:0;outline:0;box-shadow:none;resize:none;font:inherit;font-size:16px;line-height:1.5;color:var(--text);min-height:28px;max-height:180px;padding:2px 0}
-html[data-theme] body #page-ai .ai-composer textarea::placeholder{color:var(--text-dimmer)}
-.ai-composer-row{display:flex;align-items:center;gap:8px;margin-top:10px}
-.ai-grow{flex:1}
-html[data-theme] body #page-ai .ai-circle-btn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);border:0;color:var(--text);cursor:pointer;flex-shrink:0;transition:background .2s}
-html[data-theme] body #page-ai .ai-circle-btn:hover{background:var(--border-2);color:var(--text)}
-html[data-theme] body #page-ai .ai-circle-btn svg{width:18px;height:18px;stroke-width:1.9}
-html[data-theme] body #page-ai #aiMicBtn.listening{background:var(--danger);color:#fff}
-.ai-model-pill{height:36px;padding:0 14px;border-radius:999px;background:var(--surface-3);color:var(--text);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-.ai-model-pill svg{width:15px;height:15px;color:var(--accent)}
-html[data-theme] body #page-ai .ai-send{width:40px;height:40px;min-width:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;border:0;background:var(--text);color:var(--bg);cursor:pointer;box-shadow:none;transition:opacity .2s}
-html[data-theme] body #page-ai .ai-send:hover{transform:none;filter:none;box-shadow:none;opacity:.85}
-html[data-theme] body #page-ai .ai-send svg{width:19px;height:19px;stroke-width:2.2}
-html[data-theme] body #page-ai .ai-composer:has(textarea:placeholder-shown) .ai-send{opacity:.5}
-.ai-plus-wrap{position:relative}
-.ai-plus-menu{position:absolute;left:0;bottom:calc(100% + 10px);min-width:210px;background:var(--surface-solid);border:1px solid var(--border-2);border-radius:16px;padding:6px;box-shadow:var(--sh-lg);display:none;z-index:30}
-.ai-plus-menu.open{display:block}
-.ai-plus-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:10px;background:none;border:0;color:var(--text);font-size:14.5px;text-align:left;cursor:pointer}
-.ai-plus-item:hover{background:var(--hover)}
-.ai-plus-item svg{width:18px;height:18px;color:var(--text-dim)}
-
-/* mobile: poori screen chat, neeche koi nav nahi */
-@media(max-width:768px){
-  html[data-theme] body.on-ai-page .topbar,html[data-theme] body.on-ai-page .mobile-nav{display:none}
-  html[data-theme] body.on-ai-page .content{padding:0}
-  html[data-theme] body #page-ai .ai-fullpage{height:100dvh;max-height:none}
-  .ai-top-menu{display:grid}
-  html[data-theme] body #page-ai .ai-composer{border-radius:24px}
+/* ===== AI page: simple Claude-jaisa layout ===== */
+#page-ai .ai-fullpage{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#page-ai .ai-fullpage-head{padding:10px 12px!important;gap:2px!important;background:transparent!important;border:0!important;position:relative;z-index:5}
+#page-ai .ai-fullpage-head .btn-icon{width:44px;height:44px;border-radius:50%;background:transparent!important;border:0!important;color:var(--text)!important;display:grid;place-items:center}
+#page-ai .ai-fullpage-head .btn-icon svg{width:23px;height:23px}
+#page-ai .ai-hd-spacer{flex:1}
+#page-ai .ai-hd-menu{display:none!important}
+#page-ai .ai-empty{padding:0 20px 6vh!important;align-items:center;justify-content:center}
+#page-ai .ai-empty-icon{width:auto!important;height:auto!important;border:0!important;background:none!important;margin:0 0 20px!important;box-shadow:none!important;display:block!important}
+#page-ai .ai-empty-icon svg{width:58px!important;height:58px!important;stroke-width:1.3;color:var(--accent)}
+#page-ai .ai-empty-greet{font-family:'Newsreader',Georgia,'Times New Roman',serif!important;font-weight:500;font-size:clamp(28px,8.4vw,40px);letter-spacing:-.01em;line-height:1.15;margin:0 0 34px;color:var(--text);text-align:center}
+#page-ai .ai-starters{display:flex!important;flex-direction:column;align-items:center;gap:10px;max-width:100%!important;width:auto!important}
+#page-ai .ai-starters .starter{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:0 6px;align-items:baseline;max-width:100%;padding:11px 18px;border-radius:999px!important;background:transparent!important;border:1px solid var(--border-2)!important;transform:none!important;box-shadow:none!important;text-align:center;-webkit-backdrop-filter:none;backdrop-filter:none}
+#page-ai .ai-starters .starter:active{background:var(--surface-2)!important}
+#page-ai .ai-starters .starter-title{font-family:var(--sans)!important;font-weight:500;font-size:14.5px;margin:0;color:var(--text)}
+#page-ai .ai-starters .starter-desc{font-size:14.5px;color:var(--text-dim)}
+#page-ai .ai-fullpage-input-wrap{padding:6px 12px calc(12px + env(safe-area-inset-bottom))!important;background:transparent!important;border:0!important}
+#page-ai .ai-fullpage-input{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px;padding:16px 14px 12px 18px!important;margin:0!important;border-radius:30px!important;background:var(--surface-2)!important;border:1px solid var(--border-2)!important;box-shadow:none!important}
+#page-ai .ai-fullpage-input:focus-within{border-color:var(--border-glow,var(--border-2))!important;box-shadow:none!important}
+#page-ai .ai-fullpage-input textarea{width:100%;flex:none;border:0!important;background:transparent!important;outline:0!important;resize:none;font-size:17px;line-height:1.45;min-height:26px;max-height:150px;padding:0!important;color:var(--text);box-shadow:none!important}
+#page-ai .ai-composer-row{display:flex;align-items:center;gap:10px}
+#page-ai .ai-circle-btn,#page-ai .ai-composer-row .ai-input-icon-btn{width:44px;height:44px;min-width:44px;border-radius:50%;background:var(--surface-3)!important;border:0!important;color:var(--text)!important;display:grid;place-items:center;cursor:pointer;padding:0}
+#page-ai .ai-circle-btn svg,#page-ai .ai-composer-row .ai-input-icon-btn svg{width:22px;height:22px}
+#page-ai .ai-composer-row .ai-input-icon-btn.listening{background:var(--danger)!important;color:#fff!important}
+#page-ai .ai-model-pill{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px 0 14px;border-radius:999px;background:var(--surface-3);color:var(--text);font-size:16px;font-weight:500;white-space:nowrap}
+#page-ai .ai-model-pill svg{width:18px;height:18px;color:var(--accent)}
+#page-ai .ai-composer-row .send-btn{width:52px;height:52px;min-width:52px;flex:0 0 52px;border-radius:50%!important;background:var(--accent)!important;color:var(--bg)!important;box-shadow:none!important;transform:none!important}
+#page-ai .ai-composer-row .send-btn svg{width:24px;height:24px;stroke-width:2.2}
+#page-ai .ai-fullpage-input:has(textarea:placeholder-shown) .send-btn{background:rgba(140,140,140,.45)!important;color:var(--text-dim)!important}
+#page-ai .ai-plus-wrap{position:relative}
+#page-ai .ai-plus-menu{display:none;position:absolute;left:0;bottom:56px;min-width:220px;padding:6px;border-radius:16px;background:var(--surface-solid,var(--surface-2));border:1px solid var(--border-2);box-shadow:0 12px 36px rgba(0,0,0,.45);z-index:30}
+#page-ai .ai-plus-menu.show{display:block}
+#page-ai .ai-plus-menu button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;background:none;color:var(--text);font:inherit;font-size:15px;border-radius:10px;cursor:pointer;text-align:left}
+#page-ai .ai-plus-menu button:active{background:var(--surface-3)}
+#page-ai .ai-plus-menu svg{width:18px;height:18px}
+@media(max-width:1024px){
+  html body.on-ai-page .topbar{display:none!important}
+  html body.on-ai-page .mobile-nav{display:none!important}
+  html body.on-ai-page .content{padding:0!important;max-width:none!important}
+  html body.on-ai-page #page-ai .ai-fullpage{height:100vh!important;height:100dvh!important;max-height:none!important;min-height:0!important}
+  #page-ai .ai-hd-menu{display:grid!important}
 }
-html[data-theme] body .sidebar:not(.open){box-shadow:none}
-html[data-theme] body #page-ai .ai-history-drawer:not(.open){box-shadow:none}
-@media(prefers-reduced-motion:reduce){.ai-top-btn,.ai-send,.ai-circle-btn{transition:none}}
-
 </style>
 </head>
 <body>
@@ -2220,7 +2157,9 @@ html[data-theme] body #page-ai .ai-history-drawer:not(.open){box-shadow:none}
         <div class="page" id="page-ai">
           <div class="page-head">
             <div class="page-head-text">
+              <span class="eyebrow"><i data-lucide="sparkles"></i> Powered by LearnX AI</span>
               <h1>AI Chat</h1>
+              <p>Ask anything — coding help, explanations, learning guidance.</p>
             </div>
           </div>
           <div class="ai-fullpage">
@@ -2235,38 +2174,38 @@ html[data-theme] body #page-ai .ai-history-drawer:not(.open){box-shadow:none}
                 <button class="btn btn-secondary btn-sm" onclick="newChat()" type="button"><i data-lucide="plus"></i>New Chat</button>
               </div>
             </div>
-            <div class="ai-topbar">
-              <button class="ai-top-btn ai-top-menu" onclick="openSidebar()" type="button" title="Menu" aria-label="Menu"><i data-lucide="align-left"></i></button>
-              <div class="ai-top-spacer"></div>
-              <button class="ai-top-btn" onclick="toggleAiHistory()" type="button" title="Chat history" aria-label="Chat history"><i data-lucide="history"></i></button>
-              <button class="ai-top-btn" onclick="newChat()" type="button" title="New chat" aria-label="New chat"><i data-lucide="square-pen"></i></button>
-              <button class="ai-top-btn" onclick="clearChat()" type="button" title="Clear chat" aria-label="Clear chat"><i data-lucide="trash-2"></i></button>
+            <div class="ai-fullpage-head">
+              <button class="btn-icon ai-hd-menu" onclick="openSidebar()" type="button" aria-label="Menu"><i data-lucide="menu"></i></button>
+              <div class="model-icon" id="activeModelIcon" style="display:none">GM</div>
+              <div class="ai-hd-spacer"></div>
+              <button class="btn-icon" onclick="toggleAiHistory()" title="Chat history" aria-label="Chat history" type="button"><i data-lucide="history"></i></button>
+              <button class="btn-icon" onclick="newChat()" title="New chat" aria-label="New chat" type="button"><i data-lucide="square-pen"></i></button>
+              <button class="btn-icon" onclick="clearChat()" title="Clear chat" aria-label="Clear chat" type="button"><i data-lucide="trash-2"></i></button>
             </div>
             <div class="ai-fullpage-body" id="aiChatBody"></div>
             <div class="ai-fullpage-input-wrap">
               <div class="ai-attach-bar" id="aiAttachBar"></div>
-              <div class="ai-composer">
+              <div class="ai-fullpage-input">
                 <input type="file" id="aiFileInput" multiple accept="image/*,application/pdf,.pdf,.txt,.md,.csv,.json,.js,.ts,.py,.java,.c,.cpp,.html,.css,.xml,.log" style="display:none" onchange="handleAiFileSelect(event)">
                 <input type="file" id="aiCameraInput" accept="image/*" style="display:none" onchange="handleAiFileSelect(event)">
-                <textarea id="aiInput" rows="1" placeholder="Message LearnX AI…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMsg()}" oninput="autoResize(this)"></textarea>
+                <textarea id="aiInput" rows="1" placeholder="Message LearnX AI..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIMsg()}" oninput="autoResize(this)"></textarea>
                 <div class="ai-composer-row">
                   <div class="ai-plus-wrap">
-                    <button class="ai-circle-btn" id="aiPlusBtn" onclick="toggleAiPlus(event)" type="button" title="Add" aria-label="Add file or photo"><i data-lucide="plus"></i></button>
+                    <button class="ai-circle-btn" id="aiPlusBtn" onclick="toggleAiPlus(event)" type="button" aria-label="Add file or photo"><i data-lucide="plus"></i></button>
                     <div class="ai-plus-menu" id="aiPlusMenu">
-                      <button class="ai-plus-item" onclick="closeAiPlus();document.getElementById('aiFileInput').click()" type="button"><i data-lucide="paperclip"></i>Upload file</button>
-                      <button class="ai-plus-item" onclick="closeAiPlus();document.getElementById('aiCameraInput').click()" type="button"><i data-lucide="camera"></i>Photo or camera</button>
+                      <button type="button" onclick="aiPlusPick('aiFileInput')"><i data-lucide="paperclip"></i>Upload file</button>
+                      <button type="button" onclick="aiPlusPick('aiCameraInput')"><i data-lucide="camera"></i>Photo / Camera</button>
                     </div>
                   </div>
                   <span class="ai-model-pill"><i data-lucide="sparkles"></i>LearnX AI</span>
-                  <span class="ai-grow"></span>
-                  <button class="ai-circle-btn" id="aiMicBtn" onclick="toggleAiMic()" type="button" title="Speak your message" aria-label="Speak your message"><i data-lucide="mic"></i></button>
-                  <button class="send-btn ai-send" id="aiSendBtn" onclick="sendAIMsg()" type="button" title="Send" aria-label="Send"><i data-lucide="arrow-up"></i></button>
+                  <span class="ai-hd-spacer"></span>
+                  <button class="ai-input-icon-btn ai-circle-btn" id="aiMicBtn" title="Speak your message" aria-label="Voice input" onclick="toggleAiMic()" type="button"><i data-lucide="mic"></i></button>
+                  <button class="send-btn" onclick="sendAIMsg()" type="button" aria-label="Send"><i data-lucide="arrow-up"></i></button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
 
         <!-- PROFILE -->
         <div class="page" id="page-profile">
@@ -2329,7 +2268,8 @@ html[data-theme] body #page-ai .ai-history-drawer:not(.open){box-shadow:none}
                 <div class="settings-card">
                   <h3><i data-lucide="palette"></i> Appearance</h3>
                   <p class="sub">Customize how LearnX looks and feels.</p>
-                  <div class="setting-row"><div class="setting-info"><b>Theme</b><small>Light ya Dark — dono me se ek chuno</small></div><div class="setting-control"><div class="theme-select" id="themeSelect"><button class="theme-select-btn" onclick="toggleThemeDropdown(event)" type="button"><span class="theme-dot" id="themeDot"></span><span id="themeLabel">Dark</span><i data-lucide="chevron-down" class="chev"></i></button><div class="theme-dropdown"><div class="theme-option-row" data-theme-val="light" onclick="setTheme('light')"><span class="theme-dot light"></span><span>Light</span><i data-lucide="check" class="check"></i></div><div class="theme-option-row" data-theme-val="dark" onclick="setTheme('dark')"><span class="theme-dot dark"></span><span>Dark</span><i data-lucide="check" class="check"></i></div></div></div></div></div>
+                  <div class="setting-row"><div class="setting-info"><b>Theme</b><small>Choose light, dark, or match your system</small></div><div class="setting-control"><div class="theme-select" id="themeSelect"><button class="theme-select-btn" onclick="toggleThemeDropdown(event)" type="button"><span class="theme-dot" id="themeDot"></span><span id="themeLabel">Dark</span><i data-lucide="chevron-down" class="chev"></i></button><div class="theme-dropdown"><div class="theme-option-row" data-theme-val="light" onclick="setTheme('light')"><span class="theme-dot light"></span><span>Light</span><i data-lucide="check" class="check"></i></div><div class="theme-option-row" data-theme-val="dark" onclick="setTheme('dark')"><span class="theme-dot dark"></span><span>Dark</span><i data-lucide="check" class="check"></i></div><div class="theme-option-row" data-theme-val="system" onclick="setTheme('system')"><span class="theme-dot system"></span><span>System</span><i data-lucide="check" class="check"></i></div></div></div></div></div>
+                  <div class="setting-row palette-row"><div class="setting-info"><b>Color theme</b><small>Apne hisab se 10 themes me se chuno</small></div><div class="palette-grid" id="paletteGrid"></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Font size</b><small>Adjust text size</small></div><div class="setting-control"><div class="option-pills" id="fontSizePills"><div class="option-pill" data-val="0.9" onclick="setFontSize(this,0.9)">Small</div><div class="option-pill active" data-val="1" onclick="setFontSize(this,1)">Default</div><div class="option-pill" data-val="1.1" onclick="setFontSize(this,1.1)">Large</div><div class="option-pill" data-val="1.2" onclick="setFontSize(this,1.2)">XL</div></div></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Compact mode</b><small>Reduce spacing</small></div><div class="setting-control"><div class="toggle" id="compactToggle" onclick="toggleSetting('compact')"></div></div></div>
                   <div class="setting-row"><div class="setting-info"><b>Reduce motion</b><small>Minimize animations</small></div><div class="setting-control"><div class="toggle" id="reduceMotionToggle" onclick="toggleSetting('reduceMotion')"></div></div></div>
@@ -4218,7 +4158,9 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
       }
     }
     const migrateButton = document.getElementById('originMigrateButton');
-    if (migrateButton) migrateButton.style.display = (data.messages || []).length ? '' : 'none';
+    // Button sirf tab dikhao jab server par mere liye aayi message pending ho (apni bheji messages samne wale ke Drive me jaati hain)
+    const myId = State.user && State.user.id;
+    if (migrateButton) migrateButton.style.display = (data.messages || []).some(m => m.recipientId === myId) ? '' : 'none';
     Origin.pending = (Origin.pending || []).filter(p => !p.sent);
     const last = Origin.threadMsgs[Origin.threadMsgs.length - 1];
     const sig = Origin.threadMsgs.length + ':' + (last ? last.id : '') + ':' + Origin.pending.length;
@@ -5152,12 +5094,30 @@ function toggleMini() { const l = document.getElementById('appLayout'); l.classL
 
 /* AI HISTORY DRAWER */
 function toggleAiHistory() { const d = document.getElementById('aiHistoryDrawer'); const b = document.getElementById('aiHistoryBackdrop'); const isOpen = d.classList.contains('open'); if (isOpen) { d.classList.remove('open'); b.classList.remove('open'); } else { d.classList.add('open'); b.classList.add('open'); } lucide.createIcons(); }
+function aiGreetingText() {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  const n = State.user && State.user.name ? String(State.user.name).trim().split(/\s+/)[0] : '';
+  return n ? g + ', ' + n : g;
+}
+function toggleAiPlus(e) { if (e) e.stopPropagation(); const m = document.getElementById('aiPlusMenu'); if (m) { m.classList.toggle('show'); lucide.createIcons(); } }
+function aiPlusPick(id) { const m = document.getElementById('aiPlusMenu'); if (m) m.classList.remove('show'); const el = document.getElementById(id); if (el) el.click(); }
+document.addEventListener('click', e => { const m = document.getElementById('aiPlusMenu'); if (m && m.classList.contains('show') && !e.target.closest('.ai-plus-wrap')) m.classList.remove('show'); });
 function closeAiHistory() { const d = document.getElementById('aiHistoryDrawer'); const b = document.getElementById('aiHistoryBackdrop'); if (d) d.classList.remove('open'); if (b) b.classList.remove('open'); }
 
 
 /* ===== COLOR THEMES (10) ===== */
 const PALETTES = [
-  { id:'gold', name:'Default', sw:['#161615','#d4a574'] }
+  { id:'gold',   name:'X Classic', sw:['#000000','#1d9bf0'] },
+  { id:'ember',  name:'Ember Teal',  bg:'#060d0d',b2:'#0a1313',b3:'#101b1b',el:'#152323',so:'#0e1818',tint:'190,255,240',txt:'#e8f1ee',dim:'#8fa5a1',dimr:'#62787a',mut:'#3f5254',a:'#ff8a65',ah:'#ffa384',rgb:'255,138,101',g:['#ff7a59','#ffa94d','#ff5f8a'],gl1:'45,212,191',gl2:'255,138,101',side:'#050a0a',la:'#c75b3a',lrgb:'199,91,58' },
+  { id:'aurora', name:'Aurora',      bg:'#0a0b14',b2:'#0e1020',b3:'#14172a',el:'#1a1e33',so:'#121528',tint:'255,255,255',txt:'#eceefb',dim:'#9aa0bd',dimr:'#6b7191',mut:'#444a68',a:'#8e8bff',ah:'#a9a7ff',rgb:'142,139,255',g:['#8f8dff','#b69cff','#7fd8ff'],gl1:'142,139,255',gl2:'127,216,255',side:'#080913',la:'#5a57e0',lrgb:'90,87,224' },
+  { id:'matcha', name:'Matcha',      bg:'#08100b',b2:'#0c160f',b3:'#122017',el:'#17291d',so:'#0f1b14',tint:'200,255,215',txt:'#e9f3ec',dim:'#92a898',dimr:'#65796b',mut:'#41524a',a:'#7ddc8a',ah:'#9be8a5',rgb:'125,220,138',g:['#6fd67f','#b4ee7a','#4fd1a5'],gl1:'125,220,138',gl2:'79,209,165',side:'#060c08',la:'#2f8f43',lrgb:'47,143,67' },
+  { id:'rose',   name:'Rose Noir',   bg:'#120a0e',b2:'#180e13',b3:'#22131a',el:'#2b1922',so:'#1c1017',tint:'255,210,225',txt:'#f4eaee',dim:'#b09aa4',dimr:'#7f6872',mut:'#55424b',a:'#ff6b9d',ah:'#ff8db3',rgb:'255,107,157',g:['#ff6b9d','#ff9a8b','#c779ff'],gl1:'255,107,157',gl2:'199,121,255',side:'#0d0709',la:'#d63c78',lrgb:'214,60,120' },
+  { id:'ocean',  name:'Deep Ocean',  bg:'#06101a',b2:'#0a1623',b3:'#0f1f30',el:'#142a3f',so:'#0c1a29',tint:'180,225,255',txt:'#e8f1f8',dim:'#8ea6ba',dimr:'#607a90',mut:'#3d556a',a:'#4cc9f0',ah:'#7ddaf5',rgb:'76,201,240',g:['#4cc9f0','#4895ef','#7b8cff'],gl1:'76,201,240',gl2:'72,149,239',side:'#050c14',la:'#1587b3',lrgb:'21,135,179' },
+  { id:'violet', name:'Royal Violet',bg:'#0f0a1a',b2:'#150e24',b3:'#1d1330',el:'#251a3d',so:'#181028',tint:'225,205,255',txt:'#efe9f8',dim:'#a99bc2',dimr:'#7a6d96',mut:'#4f4568',a:'#b388ff',ah:'#c8a6ff',rgb:'179,136,255',g:['#b388ff','#d17bff','#7c9cff'],gl1:'179,136,255',gl2:'209,123,255',side:'#0a0612',la:'#7a43d6',lrgb:'122,67,214' },
+  { id:'crimson',name:'Crimson',     bg:'#110707',b2:'#170a0a',b3:'#221010',el:'#2c1515',so:'#1b0d0d',tint:'255,205,205',txt:'#f6ecec',dim:'#b49a9a',dimr:'#836a6a',mut:'#584343',a:'#ff4d5a',ah:'#ff7680',rgb:'255,77,90',g:['#ff4d5a','#ff7a45','#ff3d8b'],gl1:'255,77,90',gl2:'255,122,69',side:'#0b0404',la:'#d02636',lrgb:'208,38,54' },
+  { id:'mono',   name:'Mono Ink',    bg:'#0b0b0b',b2:'#101010',b3:'#171717',el:'#1e1e1e',so:'#141414',tint:'255,255,255',txt:'#ededed',dim:'#9a9a9a',dimr:'#6c6c6c',mut:'#454545',a:'#e8e8e8',ah:'#ffffff',rgb:'232,232,232',g:['#f5f5f5','#cfcfcf','#9a9a9a'],gl1:'255,255,255',gl2:'200,200,200',side:'#070707',la:'#333333',lrgb:'51,51,51' },
+  { id:'lime',   name:'Lime Neon',   bg:'#0a0d06',b2:'#0f130a',b3:'#161c0e',el:'#1d2512',so:'#12170b',tint:'225,255,170',txt:'#f0f4e6',dim:'#a2ad88',dimr:'#737d5c',mut:'#4b5439',a:'#c6f432',ah:'#d6f866',rgb:'198,244,50',g:['#c6f432','#8ee86a','#3fe0b0'],gl1:'198,244,50',gl2:'63,224,176',side:'#070904',la:'#6b8f00',lrgb:'107,143,0' }
 ];
 function _palById(id){ return PALETTES.find(p => p.id === id) || PALETTES[0]; }
 function buildPaletteCSS() {
@@ -5200,25 +5160,21 @@ function setPalette(id) {
 
 /* THEME */
 function applyTheme() {
-  // Sirf 2 themes: light aur dark. Purani 'system' setting ek baar device ke hisaab se convert ho jaati hai.
-  if (Settings.theme !== 'light' && Settings.theme !== 'dark') {
-    Settings.theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    try { saveSettings(); } catch (e) {}
-  }
   let theme = Settings.theme;
+  if (theme === 'system') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', theme);
   const pal = _palById(Settings.palette); document.documentElement.setAttribute('data-palette', pal.id);
-  const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', theme === 'dark' ? '#161615' : '#f6f5f1');
+  const mt = document.querySelector('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', theme === 'dark' ? (pal.bg || '#000000') : '#ffffff');
   renderPaletteGrid();
   const icon = theme === 'light' ? 'sun' : 'moon';
   const ti = document.getElementById('themeIcon'); if (ti) ti.outerHTML = `<i data-lucide="${icon}" id="themeIcon"></i>`;
   const dot = document.getElementById('themeDot'); const lbl = document.getElementById('themeLabel');
-  if (dot && lbl) { dot.className = 'theme-dot ' + Settings.theme; const labels = { light: 'Light', dark: 'Dark' }; lbl.textContent = labels[Settings.theme]; }
+  if (dot && lbl) { dot.className = 'theme-dot ' + Settings.theme; const labels = { light: 'Light', dark: 'Dark', system: 'System' }; lbl.textContent = labels[Settings.theme]; }
   document.querySelectorAll('.theme-option-row').forEach(r => r.classList.toggle('active', r.dataset.themeVal === Settings.theme));
   lucide.createIcons();
 }
 function toggleTheme() { Settings.theme = Settings.theme === 'dark' ? 'light' : 'dark'; saveSettings(); applyTheme(); playSound('click'); showToast(Settings.theme === 'light' ? 'Light mode' : 'Dark mode', Settings.theme === 'light' ? 'sun' : 'moon'); }
-function setTheme(mode) { Settings.theme = mode; saveSettings(); applyTheme(); closeThemeDropdown(); showToast(mode === 'light' ? 'Light theme' : 'Dark theme', mode === 'light' ? 'sun' : 'moon'); }
+function setTheme(mode) { Settings.theme = mode; saveSettings(); applyTheme(); closeThemeDropdown(); showToast('Theme: ' + mode, 'palette'); }
 function toggleThemeDropdown(e) { e.stopPropagation(); document.getElementById('themeSelect').classList.toggle('open'); }
 function closeThemeDropdown() { const el = document.getElementById('themeSelect'); if (el) el.classList.remove('open'); }
 document.addEventListener('click', e => { const el = document.getElementById('themeSelect'); if (el && el.classList.contains('open') && !el.contains(e.target)) closeThemeDropdown(); });
@@ -6082,7 +6038,7 @@ function renderChatMessages() {
   const body = document.getElementById('aiChatBody'); if (!body) return;
   const chat = State.chats.find(c => c.id === State.activeChat);
   if (!chat || chat.messages.length === 0) {
-    body.innerHTML = `<div class="ai-empty"><div class="ai-empty-mark"><i data-lucide="sparkles"></i></div><h3 class="ai-greet">${aiGreeting()}</h3><div class="ai-starters"><div class="starter" onclick="sendAIMsg('Explain recursion in C++ with an example')"><div class="starter-title">Explain recursion</div><div class="starter-desc">in C++ with example</div></div><div class="starter" onclick="sendAIMsg('What is machine learning in simple words?')"><div class="starter-title">Machine Learning</div><div class="starter-desc">explained simply</div></div><div class="starter" onclick="sendAIMsg('Give me a roadmap to learn web development')"><div class="starter-title">Web Dev Roadmap</div><div class="starter-desc">beginner to advanced</div></div><div class="starter" onclick="sendAIMsg('Solve: What is the derivative of x^2?')"><div class="starter-title">Math Help</div><div class="starter-desc">derivatives &amp; calculus</div></div></div></div>`;
+    body.innerHTML = `<div class="ai-empty"><div class="ai-empty-icon"><i data-lucide="sparkles"></i></div><h2 class="ai-empty-greet">${esc(aiGreetingText())}</h2><div class="ai-starters"><div class="starter" onclick="sendAIMsg('Explain recursion in C++ with an example')"><div class="starter-title">Explain recursion</div><div class="starter-desc">in C++ with example</div></div><div class="starter" onclick="sendAIMsg('What is machine learning in simple words?')"><div class="starter-title">Machine Learning</div><div class="starter-desc">explained simply</div></div><div class="starter" onclick="sendAIMsg('Give me a roadmap to learn web development')"><div class="starter-title">Web Dev Roadmap</div><div class="starter-desc">beginner to advanced</div></div><div class="starter" onclick="sendAIMsg('Solve: What is the derivative of x^2?')"><div class="starter-title">Math Help</div><div class="starter-desc">derivatives &amp; calculus</div></div></div></div>`;
     lucide.createIcons();
     return;
   }
@@ -6099,16 +6055,6 @@ function renderChatMessages() {
   lucide.createIcons();
   body.scrollTop = body.scrollHeight;
 }
-function aiGreeting() {
-  const h = new Date().getHours();
-  const part = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 17 ? 'Good afternoon' : 'Good evening';
-  const first = State.user && State.user.name ? String(State.user.name).trim().split(/\s+/)[0] : '';
-  return first ? part + ', ' + esc(first) : part;
-}
-function toggleAiPlus(e) { if (e) e.stopPropagation(); const m = document.getElementById('aiPlusMenu'); if (m) m.classList.toggle('open'); }
-function closeAiPlus() { const m = document.getElementById('aiPlusMenu'); if (m) m.classList.remove('open'); }
-document.addEventListener('click', e => { const w = document.querySelector('.ai-plus-wrap'); if (w && !w.contains(e.target)) closeAiPlus(); });
-
 function copyMsg(i) {
   const chat = State.chats.find(c => c.id === State.activeChat);
   if (!chat || !chat.messages[i]) return;
@@ -6526,6 +6472,7 @@ function renderAll() {
 
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons(); applyTheme(); applyAllSettings(); initSplash();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (Settings.theme === 'system') applyTheme(); });
   const tb = document.getElementById('topbar'); if (tb) window.addEventListener('scroll', () => tb.classList.toggle('scrolled', window.scrollY > 4), { passive: true });
   const em = document.getElementById('editNameModal'); if (em) em.addEventListener('click', e => { if (e.target.id === 'editNameModal') closeEditName(); });
   const cp = document.getElementById('cmdPalette'); if (cp) cp.addEventListener('click', e => { if (e.target.id === 'cmdPalette') closeCmdPalette(); });
@@ -6534,6 +6481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); }); }
 
 Object.assign(window, {
+  toggleAiPlus, aiPlusPick, aiGreetingText,
   nav, openCategory, openCourse, openLesson, toggleModule, toggleComplete,
   addNote, deleteNote, pinNote, newChat, clearChat, clearAllHistory,
   deleteChat, openChat, sendAIMsg, copyMsg, autoResize,
@@ -6551,7 +6499,7 @@ Object.assign(window, {
   renderCertificates, showCertificate, renderAchievements, checkAchievements,
   renderGlobalSearch, nextOnboarding, skipOnboarding, acceptCookies,
   confetti,
-  toggleAiHistory, closeAiHistory, toggleAiPlus, closeAiPlus
+  toggleAiHistory, closeAiHistory
 });
 </script>
 <div class="drive-required-gate" id="driveAccessGate" role="dialog" aria-modal="true" aria-labelledby="driveGateTitle">
