@@ -497,7 +497,8 @@ img{max-width:100%;display:block}
 .origin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .origin-video{min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-inner)}
 .origin-thumb{position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,#172c31,#35564d);overflow:hidden}
-.origin-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.origin-thumb{transition:aspect-ratio .2s}
+.origin-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#000}
 .origin-inline-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;display:block}
 .origin-play{position:absolute;inset:0;margin:auto;width:50px;height:50px;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(12,18,18,.82);color:#fff;cursor:pointer}
 .origin-play svg{width:22px;height:22px;fill:currentColor}
@@ -2883,13 +2884,19 @@ function originAvatarHTML(channel) {
     ? `<img class="origin-avatar" src="${originAttr(channel.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
     : `<div class="origin-avatar" style="background:hsl(${chatHue(name)} 42% 40%);color:#fff">${esc(name.trim().slice(0, 1).toUpperCase() || '?')}</div>`;
 }
+// Card ka box video ke asli ratio me set hota hai taaki video aadhi crop/chhup na ho (landscape 16:9 se lekar portrait 4:5 tak)
+function originFitThumb(img, ratio) {
+  const t = img && img.closest ? img.closest('.origin-thumb') : null; if (!t) return;
+  const r = ratio || (img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0);
+  if (r) t.style.aspectRatio = Math.min(2.2, Math.max(0.75, r)).toFixed(4);
+}
 function originVideoCardHTML(video, owner = false) {
   Origin.videos.set(video.id, video);
   const thumbId = video.thumbnailFileId || video.driveFileId;
   const driveId = encodeURIComponent(thumbId || video.driveFileId || '');
   const thumbUrl = thumbId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w640` : `https://drive.google.com/thumbnail?id=${encodeURIComponent(video.driveFileId)}&sz=w640`;
   return `<article class="origin-video" aria-label="${originAttr(video.title)}">
-    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onload="originFitThumb(this)" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
     <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
@@ -3212,11 +3219,16 @@ async function loadReelsPage() {
   const feed = document.getElementById('reelsFeed'); if (!feed) return;
   stopReels(); reelLayout();
   if (!getToken()) { feed.innerHTML = '<div class="reels-empty"><p>Reels dekhne ke liye login karein.</p></div>'; return; }
-  if (!Reels.items.length) feed.innerHTML = '<div class="reels-empty"><p>Reels load ho rahi hain...</p></div>';
+  const hadCache = Reels.items.length > 0;
+  if (hadCache) renderReels();   // pichli feed turant dikhao, video preload shuru
+  else feed.innerHTML = '<div class="reels-empty"><p>Reels load ho rahi hain...</p></div>';
   try {
     const data = await apiFetch('/api/videos?action=feed&kind=reel');
-    Reels.items = data.videos || [];
-    Reels.items.forEach(r => Origin.videos.set(r.id, r));
+    const fresh = data.videos || [];
+    const same = hadCache && fresh.length === Reels.items.length && fresh.every((v, i) => v.id === Reels.items[i].id);
+    fresh.forEach(r => Origin.videos.set(r.id, r));
+    if (same) { fresh.forEach((v, i) => { Object.assign(Reels.items[i], v, { _iframeOnly: Reels.items[i]._iframeOnly }); reelRefreshUi(Reels.items[i]); }); return; }
+    Reels.items = fresh;
     renderReels();
   } catch (e) {
     feed.innerHTML = `<div class="reels-empty"><div><i data-lucide="cloud-off"></i><h3>Reels load nahi ho payi</h3><p>${esc((e.data && e.data.error) || 'Thodi der baad dobara try karein.')}</p></div></div>`;
@@ -3239,7 +3251,7 @@ function renderReels() {
       const s = entry.target;
       if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
         // Scroll karte hi turant play; bahut tez flick par beech ki reels load nahi hoti
-        clearTimeout(s._actT); s._actT = setTimeout(() => activateReel(s), 60);
+        clearTimeout(s._actT); s._actT = setTimeout(() => activateReel(s), 30);
       } else if (!entry.isIntersecting || entry.intersectionRatio < 0.3) {
         clearTimeout(s._actT);
         if (s.dataset.reelId === Reels.activeId) reelPause(s);
@@ -3286,7 +3298,7 @@ function lxVideoPlay(video) {
   });
 }
 // Agla source / iframe tabhi try hota hai jab error aaye ya 12 second tak data aana band ho. Slow net par chalta load beech me nahi kaatta.
-function lxVideoLoad(video, fileId, onFail) {
+function lxVideoLoad(video, fileId, onFail, stallMs) {
   const sources = lxVideoSources(fileId);
   let index = -1, last = Date.now();
   ['progress', 'loadedmetadata', 'loadeddata', 'timeupdate'].forEach(ev => video.addEventListener(ev, () => { last = Date.now(); }));
@@ -3298,11 +3310,11 @@ function lxVideoLoad(video, fileId, onFail) {
     if (index >= sources.length) { video._lxDead = true; if (onFail) onFail(); return; }
     last = Date.now();
     video.src = sources[index];
-    if (video._lxWant) lxVideoPlay(video);
+    if (video._lxWant || video._lxPrime) lxVideoPlay(video);
     video._lxTimer = setInterval(() => {
       if (video._lxDead || !video.isConnected) { lxVideoStop(video); return; }
       if (!video._lxWant) { last = Date.now(); return; }
-      if (Date.now() - last > 12000) next();
+      if (Date.now() - last > (stallMs || 12000)) next();
     }, 1000);
   };
   video.addEventListener('error', () => { if (!video._lxDead) next(); });
@@ -3319,6 +3331,7 @@ function reelCanPrefetch() {
   try { const c = navigator.connection; if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return false; } catch (e) {}
   return true;
 }
+function reelIdx(section) { return Array.prototype.indexOf.call(section.parentNode ? section.parentNode.children : [], section); }
 function reelPrefetchNext(section) {
   if (!reelCanPrefetch()) return;
   const next = section.nextElementSibling;
@@ -3333,7 +3346,8 @@ function reelEnsureVideo(section, preloadOnly) {
   if (r._iframeOnly) { if (!preloadOnly) reelFallbackIframe(section, r); return null; }
   if (video) lxVideoDestroy(video);
   video = document.createElement('video');
-  video.className = 'reel-video'; video.loop = true; video.muted = Reels.muted; video.preload = 'auto';
+  video.className = 'reel-video'; video.loop = true; video.muted = preloadOnly ? true : Reels.muted; video.preload = 'auto';
+  if (preloadOnly) video._lxPrime = true;   // muted chala kar turant pause: mobile Chrome tabhi sach me buffer karta hai
   video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', '');
   video._lxBlocked = () => { section.classList.add('paused'); section.classList.remove('loading'); };
   video.addEventListener('loadedmetadata', () => {
@@ -3341,14 +3355,21 @@ function reelEnsureVideo(section, preloadOnly) {
     if (video.videoWidth && video.videoHeight) { section.dataset.fit = '1'; section.classList.toggle('land', video.videoWidth > video.videoHeight * 1.05); }
   });
   video.addEventListener('playing', () => {
+    if (video._lxPrime && !video._lxWant) { try { video.pause(); video.currentTime = 0; } catch (e) {} video._lxPrime = false; return; }
+    video._lxPrime = false;
     media.classList.add('playing'); section.classList.remove('paused', 'loading');
     if (Reels.activeId === id) reelPrefetchNext(section);
   });
   video.addEventListener('waiting', () => { if (Reels.activeId === id && video._lxWant) section.classList.add('loading'); });
-  video.addEventListener('canplay', () => { if (Reels.activeId === id) reelPrefetchNext(section); });
+  video.addEventListener('canplay', () => {
+    if (Reels.activeId === id) { reelPrefetchNext(section); return; }
+    // agli-agli reel bhi chain me preload (active se 2 aage tak)
+    const act = Reels.activeId && document.querySelector(`.reel[data-reel-id="${Reels.activeId}"]`);
+    if (act && reelIdx(section) - reelIdx(act) === 1) reelPrefetchNext(section);
+  });
   video.addEventListener('webkitendfullscreen', () => { video.controls = false; });
   media.appendChild(video);
-  lxVideoLoad(video, r.driveFileId, () => reelFallbackIframe(section, r));
+  lxVideoLoad(video, r.driveFileId, () => reelFallbackIframe(section, r), 8000);
   return video;
 }
 function activateReel(section) {
@@ -3361,7 +3382,7 @@ function activateReel(section) {
   section.classList.remove('paused');
   const video = reelEnsureVideo(section, false);
   if (video) {
-    video._lxWant = true;
+    video._lxWant = true; video._lxPrime = false;
     video.muted = Reels.muted;
     if (video.readyState < 3) section.classList.add('loading');
     try { if (video.currentTime > 0.1) video.currentTime = 0; } catch (e) {}
@@ -3388,7 +3409,7 @@ function reelDestroy(section) {
 }
 // Sirf current, pichli aur agli reel ka video memory me rakho
 function reelTrim(active) {
-  const keep = new Set([active, active.previousElementSibling, active.nextElementSibling]);
+  const n1 = active.nextElementSibling, keep = new Set([active, active.previousElementSibling, n1, n1 && n1.nextElementSibling]);
   document.querySelectorAll('#reelsFeed .reel').forEach(s => { if (!keep.has(s)) reelDestroy(s); });
 }
 function reelFallbackIframe(section, r) {
@@ -4311,6 +4332,7 @@ function originWatchVideo(videoId, btn) {
   player.setAttribute('playsinline', ''); player.setAttribute('webkit-playsinline', ''); player.setAttribute('controlslist', 'nodownload');
   if (posterImg && posterImg.getAttribute('src')) player.poster = posterImg.getAttribute('src');
   player._lxWant = true;
+  player.addEventListener('loadedmetadata', () => { if (player.videoWidth && player.videoHeight) thumb.style.aspectRatio = Math.min(2.2, Math.max(0.75, player.videoWidth / player.videoHeight)).toFixed(4); });
   const spin = document.createElement('div'); spin.className = 'lx-spin';
   player._lxBlocked = () => spin.remove();
   player.addEventListener('playing', () => spin.remove());
@@ -6488,7 +6510,7 @@ Object.assign(window, {
   switchAuth, oauthLogin,
   toggleTheme, setTheme, toggleThemeDropdown, closeThemeDropdown,
   switchCourseTab, searchCourses, switchProfileTab,
-  switchSettingsPanel, toggleSetting, testPush, setOriginUploadKind, openOriginUpload, reelTap, reelFullscreen, reelPosterFit, reelLike, reelToggleSound, openReelComments, closeReelComments, postReelComment, deleteReelComment, setFontSize, setSelect, setAIstyle,
+  switchSettingsPanel, toggleSetting, testPush, setOriginUploadKind, openOriginUpload, reelTap, reelFullscreen, reelPosterFit, originFitThumb, reelLike, reelToggleSound, openReelComments, closeReelComments, postReelComment, deleteReelComment, setFontSize, setSelect, setAIstyle,
   openEditName, closeEditName, saveName,
   addAnotherAccount, logout, exportData, clearProgress, clearChats, resetAll,
   openSidebar, closeSidebar, showToast, toggleMini,
