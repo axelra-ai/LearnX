@@ -5,7 +5,7 @@
 // "network-first" strategy: pehle live version try karta hai (naye updates
 // turant milein), tabhi cache use hota hai jab internet na ho.
 
-const CACHE_NAME = 'learnx-v3';
+const CACHE_NAME = 'learnx-v4';
 const SHELL_FILES = ['/'];
 
 self.addEventListener('install', (event) => {
