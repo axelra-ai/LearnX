@@ -10,6 +10,7 @@ async function loadPush() {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
 const MAX_REEL_BYTES = 500 * 1024 * 1024;
+const MAX_POST_BYTES = 10 * 1024 * 1024;
 const SCHEMA_HINT = 'Supabase me latest schema.sql run karein (reels/likes/comments tables missing hain).';
 
 
@@ -78,9 +79,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET' && action === 'feed') {
-      const kind = req.query.kind === 'reel' ? 'reel' : 'video';
+      const kind = req.query.kind === 'reel' ? 'reel' : req.query.kind === 'post' ? 'post' : 'video';
       const trending = req.query.sort === 'trending';
-      if (kind === 'reel') {
+      if (kind === 'reel' || kind === 'post') {
         // Reels: likes/comments ke counts ke saath. Schema run na hui ho to 503 + hint.
         try {
           const rows = await sql`
@@ -92,7 +93,7 @@ export default async function handler(req, res) {
               (select count(*)::int from video_comments c where c.video_id = v.id) as "commentCount",
               exists(select 1 from video_likes l where l.video_id = v.id and l.user_id = ${user ? user.uid : null}) as "likedByMe"
             from videos v join users u on u.id = v.user_id
-            where v.kind = 'reel'
+            where v.kind = ${kind}
             order by case when ${trending} then v.view_count end desc, v.created_at desc limit 40
           `;
           return res.status(200).json({ videos: rows });
@@ -154,7 +155,7 @@ export default async function handler(req, res) {
         select id, user_id as "channelId", title, description,
           drive_file_id as "driveFileId", thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
           view_count as "viewCount", created_at as "createdAt", coalesce(to_jsonb(videos)->>'kind', 'video') as "kind"
-        from videos where user_id = ${channelId} order by created_at desc limit 60
+        from videos where user_id = ${channelId} and coalesce(to_jsonb(videos)->>'kind', 'video') <> 'post' order by created_at desc limit 60
       `;
       return res.status(200).json({ channel: channels[0], videos });
     }
@@ -165,7 +166,7 @@ export default async function handler(req, res) {
         select id, user_id as "channelId", title, description, drive_file_id as "driveFileId",
           thumbnail_file_id as "thumbnailFileId", mime_type as "mimeType", size_bytes as "sizeBytes",
           view_count as "viewCount", created_at as "createdAt", coalesce(to_jsonb(videos)->>'kind', 'video') as "kind"
-        from videos where user_id = ${user.uid} order by created_at desc
+        from videos where user_id = ${user.uid} and coalesce(to_jsonb(videos)->>'kind', 'video') <> 'post' order by created_at desc
       `;
       return res.status(200).json({ videos: rows });
     }
@@ -384,11 +385,14 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'publish') {
       if (!requireUser(user, res)) return;
       const { title, description = '', driveFileId, mimeType, sizeBytes, googleToken, thumbnailFileId } = req.body || {};
-      const kind = (req.body && req.body.kind) === 'reel' ? 'reel' : 'video';
+      const reqKind = req.body && req.body.kind;
+      const kind = reqKind === 'reel' ? 'reel' : reqKind === 'post' ? 'post' : 'video';
       const size = Number(sizeBytes);
-      if (!title || typeof title !== 'string' || title.trim().length > 160 || !driveFileId || !mimeType || !mimeType.startsWith('video/') || typeof googleToken !== 'string' || googleToken.length > 4096) {
-        return res.status(400).json({ error: 'Video ka title ya file info sahi nahi hai.' });
+      const wantedMime = kind === 'post' ? 'image/' : 'video/';
+      if (!title || typeof title !== 'string' || title.trim().length > 160 || !driveFileId || !mimeType || !mimeType.startsWith(wantedMime) || typeof googleToken !== 'string' || googleToken.length > 4096) {
+        return res.status(400).json({ error: kind === 'post' ? 'Post ki photo ya details sahi nahi hain.' : 'Video ka title ya file info sahi nahi hai.' });
       }
+      if (kind === 'post' && size > MAX_POST_BYTES) return res.status(400).json({ error: 'Post ki photo 10 MB se chhoti honi chahiye.' });
       if (thumbnailFileId && (typeof thumbnailFileId !== 'string' || !/^[a-zA-Z0-9_-]{10,200}$/.test(thumbnailFileId))) {
         return res.status(400).json({ error: 'Thumbnail file id sahi nahi hai.' });
       }
@@ -405,11 +409,11 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Video aapke Google Drive ki verified file nahi hai.' });
       }
       let rows;
-      if (kind === 'reel') {
+      if (kind === 'reel' || kind === 'post') {
         try {
           rows = await sql`
             insert into videos (user_id, title, description, drive_file_id, mime_type, size_bytes, thumbnail_file_id, kind)
-            values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null}, 'reel')
+            values (${user.uid}, ${title.trim()}, ${String(description).slice(0, 2000)}, ${driveFileId}, ${mimeType}, ${size}, ${thumbnailFileId || null}, ${kind})
             returning id, title, description, drive_file_id as "driveFileId", mime_type as "mimeType",
               size_bytes as "sizeBytes", view_count as "viewCount", created_at as "createdAt", thumbnail_file_id as "thumbnailFileId", kind
           `;
