@@ -3285,7 +3285,12 @@ async function loadReelsPage() {
     const same = hadCache && fresh.length === Reels.items.length && fresh.every((v, i) => v.id === Reels.items[i].id);
     fresh.forEach(r => Origin.videos.set(r.id, r));
     try { localStorage.setItem('lx_cached_reels', JSON.stringify(fresh.slice(0, 30))); } catch (e) {}
-    if (same) { fresh.forEach((v, i) => { Object.assign(Reels.items[i], v, { _iframeOnly: Reels.items[i]._iframeOnly }); reelRefreshUi(Reels.items[i]); }); return; }
+    if (same) {
+      fresh.forEach((v, i) => { Object.assign(Reels.items[i], v, { _iframeOnly: Reels.items[i]._iframeOnly }); reelRefreshUi(Reels.items[i]); });
+      const first = feed.querySelector('.reel');
+      if (first && !Reels.activeId) activateReel(first);
+      return;
+    }
     Reels.items = fresh;
     renderReels();
   } catch (e) {
@@ -3323,7 +3328,10 @@ function renderReels() {
   // Pehli reel turant play karein bina user ke click kiye
   const first = feed.querySelector('.reel');
   if (first) {
-    setTimeout(() => { if (!Reels.activeId) activateReel(first); }, 50);
+    requestAnimationFrame(() => {
+      if (!Reels.activeId) activateReel(first);
+    });
+    setTimeout(() => { if (!Reels.activeId) activateReel(first); }, 100);
   }
 }
 function reelLayout() {
@@ -3340,9 +3348,9 @@ window.addEventListener('resize', () => { if (document.body.classList.contains('
 function lxVideoSources(fileId) {
   const e = encodeURIComponent(fileId);
   return [
-    'https://drive.google.com/uc?export=download&id=' + e,
+    '/api/videos?action=stream&id=' + e,
     'https://drive.usercontent.google.com/download?id=' + e + '&export=download&confirm=t',
-    'https://docs.google.com/uc?export=download&id=' + e
+    'https://drive.google.com/uc?export=download&id=' + e
   ];
 }
 function lxVideoStop(video) { if (video && video._lxTimer) { clearInterval(video._lxTimer); video._lxTimer = null; } }
@@ -3427,6 +3435,7 @@ function reelEnsureVideo(section, preloadOnly) {
   video.setAttribute('controlslist', 'nodownload');
   video.preload = 'auto';
   if (preloadOnly) video._lxPrime = true;   // muted chala kar turant pause: mobile Chrome tabhi sach me buffer karta hai
+  if (!preloadOnly) video._lxWant = true;
   video._lxBlocked = () => {
     if (!video.muted) {
       video.muted = true;
@@ -3441,6 +3450,12 @@ function reelEnsureVideo(section, preloadOnly) {
     // Seedhi (portrait) video poori screen bhare; chaudi (landscape) video poori dikhe aur peeche blur background bhare
     if (video.videoWidth && video.videoHeight) { section.dataset.fit = '1'; section.classList.toggle('land', video.videoWidth > video.videoHeight * 1.05); }
   });
+  video.addEventListener('loadeddata', () => {
+    if (Reels.activeId === id) {
+      media.classList.add('playing'); section.classList.remove('loading');
+      if (video._lxWant && video.paused) lxVideoPlay(video);
+    }
+  });
   video.addEventListener('playing', () => {
     if (video._lxPrime && !video._lxWant) { try { video.pause(); video.currentTime = 0; } catch (e) {} video._lxPrime = false; return; }
     video._lxPrime = false;
@@ -3449,7 +3464,11 @@ function reelEnsureVideo(section, preloadOnly) {
   });
   video.addEventListener('waiting', () => { if (Reels.activeId === id && video._lxWant) section.classList.add('loading'); });
   video.addEventListener('canplay', () => {
-    if (Reels.activeId === id) reelPrefetchNext(section);
+    if (Reels.activeId === id) {
+      media.classList.add('playing'); section.classList.remove('loading');
+      if (video._lxWant && video.paused) lxVideoPlay(video);
+      reelPrefetchNext(section);
+    }
   });
   video.addEventListener('webkitendfullscreen', () => { video.controls = false; });
   media.appendChild(video);
@@ -3472,7 +3491,12 @@ function activateReel(section) {
       video.defaultMuted = true;
       video.setAttribute('muted', '');
     }
-    if (video.readyState < 3) section.classList.add('loading');
+    if (video.readyState < 2) section.classList.add('loading');
+    else {
+      section.classList.remove('loading');
+      const m = section.querySelector('.reel-media');
+      if (m) m.classList.add('playing');
+    }
     try { if (video.currentTime > 0.1) video.currentTime = 0; } catch (e) {}
     lxVideoPlay(video);
     reelPrefetchNext(section);
