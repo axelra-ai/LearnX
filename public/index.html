@@ -2679,8 +2679,21 @@ const State = {
 };
 const Drive = { token: null, exp: 0, fileId: DB.get('driveFileId', null), tc: null, tokenPromise: null, busy: false, again: false, dirty: false, timer: null,
   lastSync: DB.get('driveLast', null), err: '', applying: false, serverPending: false, lastXp: DB.get('xp', 0), bannerShown: false, bannerMode: 'offer', _res: null };
-const Origin = { token: null, exp: 0, ownerId: null, tc: null, tokenPromise: null, searchTimer: null, chatRefreshTimer: null, presenceTimer: null, typingTimer: null, typingSentAt: 0, migratingChats: new Set(), channelId: null, channelName: '', chats: [], activeChatId: null, playing: null, videos: new Map() };
+let _initChats = [];
+try { _initChats = JSON.parse(localStorage.getItem('lx_origin_chats') || '[]'); } catch (e) {}
+const Origin = { token: null, exp: 0, ownerId: null, tc: null, tokenPromise: null, searchTimer: null, chatRefreshTimer: null, presenceTimer: null, typingTimer: null, typingSentAt: 0, migratingChats: new Set(), channelId: null, channelName: '', chats: _initChats, activeChatId: null, playing: null, videos: new Map() };
 const ChatRealtime = { client: null, channel: null, topic: null, status: 'closed', refreshTimer: null, readyPromise: null };
+(function initRestoreDriveToken() {
+  try {
+    const t = sessionStorage.getItem('lx_drive_token');
+    const exp = Number(sessionStorage.getItem('lx_drive_exp') || 0);
+    const uid = sessionStorage.getItem('lx_drive_user');
+    if (t && exp > Date.now() + 60000 && State.user && uid === State.user.id) {
+      Drive.token = t; Drive.exp = exp;
+      Origin.token = t; Origin.exp = exp; Origin.ownerId = State.user.id;
+    }
+  } catch (e) {}
+})();
 function save() {
   ['progress','notes','chats','deletedChats','activeChat','bookmarks','flashcards','quizScores','xp','streak','recent','lastLesson','weeklyLessons'].forEach(k => DB.set(k, State[k]));
   _localVer++;
@@ -2774,6 +2787,11 @@ function driveApply(merged) {
 function setDriveAccessToken(accessToken, expiresIn = 3600) {
   Drive.token = accessToken; Drive.exp = Date.now() + (Math.max(60, Number(expiresIn) || 3600) - 45) * 1000;
   Origin.token = accessToken; Origin.exp = Drive.exp; Origin.ownerId = State.user && State.user.id;
+  try {
+    sessionStorage.setItem('lx_drive_token', accessToken);
+    sessionStorage.setItem('lx_drive_exp', String(Drive.exp));
+    if (State.user && State.user.id) sessionStorage.setItem('lx_drive_user', State.user.id);
+  } catch (e) {}
   return accessToken;
 }
 function driveRequestToken() {
@@ -3080,6 +3098,7 @@ async function loadOriginChats() {
   try {
     const data = await apiFetch('/api/videos?action=inbox');
     Origin.chats = data.conversations || [];
+    try { localStorage.setItem('lx_origin_chats', JSON.stringify(Origin.chats)); } catch (e) {}
     backfillChatPreviews();
     if (Origin.activeChat) {
       const active = Origin.chats.find(chat => chat.channelId === Origin.activeChatId);
@@ -3091,7 +3110,7 @@ async function loadOriginChats() {
       updateOriginThreadStatus();
     }
     renderOriginChats();
-  } catch (e) { list.innerHTML = '<div class="empty-state"><p>Chats load nahi ho paayi.</p></div>'; }
+  } catch (e) { if (!Origin.chats.length) list.innerHTML = '<div class="empty-state"><p>Chats load nahi ho paayi.</p></div>'; }
 }
 function originPresenceUpdate(online) {
   if (!State.user || !State.user.id || !getToken()) return;
@@ -3251,20 +3270,29 @@ async function loadReelsPage() {
   const feed = document.getElementById('reelsFeed'); if (!feed) return;
   stopReels(); reelLayout();
   if (!getToken()) { feed.innerHTML = '<div class="reels-empty"><p>Reels dekhne ke liye login karein.</p></div>'; return; }
+  if (!Reels.items.length) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('lx_cached_reels') || '[]');
+      if (Array.isArray(cached) && cached.length) Reels.items = cached;
+    } catch (e) {}
+  }
   const hadCache = Reels.items.length > 0;
   if (hadCache) renderReels();   // pichli feed turant dikhao, video preload shuru
-  else feed.innerHTML = '<div class="reels-empty"><p>Reels load ho rahi hain...</p></div>';
+  else feed.innerHTML = '<div class="reels-empty"><div class="lx-spin" style="margin:0 auto 12px"></div><p>Reels load ho rahi hain...</p></div>';
   try {
     const data = await apiFetch('/api/videos?action=feed&kind=reel');
     const fresh = data.videos || [];
     const same = hadCache && fresh.length === Reels.items.length && fresh.every((v, i) => v.id === Reels.items[i].id);
     fresh.forEach(r => Origin.videos.set(r.id, r));
+    try { localStorage.setItem('lx_cached_reels', JSON.stringify(fresh.slice(0, 30))); } catch (e) {}
     if (same) { fresh.forEach((v, i) => { Object.assign(Reels.items[i], v, { _iframeOnly: Reels.items[i]._iframeOnly }); reelRefreshUi(Reels.items[i]); }); return; }
     Reels.items = fresh;
     renderReels();
   } catch (e) {
-    feed.innerHTML = `<div class="reels-empty"><div><i data-lucide="cloud-off"></i><h3>Reels load nahi ho payi</h3><p>${esc((e.data && e.data.error) || 'Thodi der baad dobara try karein.')}</p></div></div>`;
-    lucide.createIcons();
+    if (!hadCache) {
+      feed.innerHTML = `<div class="reels-empty"><div><i data-lucide="cloud-off"></i><h3>Reels load nahi ho payi</h3><p>${esc((e.data && e.data.error) || 'Thodi der baad dobara try karein.')}</p></div></div>`;
+      lucide.createIcons();
+    }
   }
 }
 function renderReels() {
@@ -3281,16 +3309,22 @@ function renderReels() {
   Reels.observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       const s = entry.target;
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
-        // Scroll karte hi turant play; bahut tez flick par beech ki reels load nahi hoti
-        clearTimeout(s._actT); s._actT = setTimeout(() => activateReel(s), 30);
-      } else if (!entry.isIntersecting || entry.intersectionRatio < 0.3) {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.45) {
+        // Scroll karte hi turant play
+        clearTimeout(s._actT); s._actT = setTimeout(() => activateReel(s), 20);
+      } else if (!entry.isIntersecting || entry.intersectionRatio < 0.25) {
         clearTimeout(s._actT);
         if (s.dataset.reelId === Reels.activeId) reelPause(s);
       }
     });
-  }, { root: feed, threshold: [0, 0.3, 0.55] });
+  }, { root: feed, threshold: [0, 0.25, 0.45] });
   feed.querySelectorAll('.reel').forEach(el => Reels.observer.observe(el));
+
+  // Pehli reel turant play karein bina user ke click kiye
+  const first = feed.querySelector('.reel');
+  if (first) {
+    setTimeout(() => { if (!Reels.activeId) activateReel(first); }, 50);
+  }
 }
 function reelLayout() {
   try {
@@ -3306,8 +3340,9 @@ window.addEventListener('resize', () => { if (document.body.classList.contains('
 function lxVideoSources(fileId) {
   const e = encodeURIComponent(fileId);
   return [
+    'https://drive.google.com/uc?export=download&id=' + e,
     'https://drive.usercontent.google.com/download?id=' + e + '&export=download&confirm=t',
-    'https://drive.google.com/uc?export=download&confirm=t&id=' + e
+    'https://docs.google.com/uc?export=download&id=' + e
   ];
 }
 function lxVideoStop(video) { if (video && video._lxTimer) { clearInterval(video._lxTimer); video._lxTimer = null; } }
@@ -3321,9 +3356,12 @@ function lxVideoPlay(video) {
   let p; try { p = video.play(); } catch (e) { return; }
   if (!p || !p.catch) return;
   p.catch(err => {
-    if (video._lxDead || !err || err.name !== 'NotAllowedError') return;
+    if (video._lxDead) return;
+    // Policy fallback: ensure muted autoplay
     if (!video.muted) {
       video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute('muted', '');
       const q = video.play();
       if (q && q.catch) q.catch(() => { if (video._lxBlocked) video._lxBlocked(); });
     } else if (video._lxBlocked) video._lxBlocked();
@@ -3378,10 +3416,27 @@ function reelEnsureVideo(section, preloadOnly) {
   if (r._iframeOnly) { if (!preloadOnly) reelFallbackIframe(section, r); return null; }
   if (video) lxVideoDestroy(video);
   video = document.createElement('video');
-  video.className = 'reel-video'; video.loop = true; video.muted = preloadOnly ? true : Reels.muted; video.preload = 'auto';
+  video.className = 'reel-video'; video.loop = true;
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.setAttribute('muted', '');
+  video.setAttribute('autoplay', '');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.setAttribute('controlslist', 'nodownload');
+  video.preload = 'auto';
   if (preloadOnly) video._lxPrime = true;   // muted chala kar turant pause: mobile Chrome tabhi sach me buffer karta hai
-  video.setAttribute('playsinline', ''); video.setAttribute('webkit-playsinline', '');
-  video._lxBlocked = () => { section.classList.add('paused'); section.classList.remove('loading'); };
+  video._lxBlocked = () => {
+    if (!video.muted) {
+      video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute('muted', '');
+      lxVideoPlay(video);
+      return;
+    }
+    section.classList.add('paused'); section.classList.remove('loading');
+  };
   video.addEventListener('loadedmetadata', () => {
     // Seedhi (portrait) video poori screen bhare; chaudi (landscape) video poori dikhe aur peeche blur background bhare
     if (video.videoWidth && video.videoHeight) { section.dataset.fit = '1'; section.classList.toggle('land', video.videoWidth > video.videoHeight * 1.05); }
@@ -3413,11 +3468,14 @@ function activateReel(section) {
   if (video) {
     video._lxWant = true; video._lxPrime = false;
     video.muted = Reels.muted;
+    if (Reels.muted) {
+      video.defaultMuted = true;
+      video.setAttribute('muted', '');
+    }
     if (video.readyState < 3) section.classList.add('loading');
     try { if (video.currentTime > 0.1) video.currentTime = 0; } catch (e) {}
     lxVideoPlay(video);
-    if (video.readyState >= 3) reelPrefetchNext(section);
-    else setTimeout(() => { if (Reels.activeId === id) reelPrefetchNext(section); }, 1500);
+    reelPrefetchNext(section);
   }
   reelTrim(section);
   const key = 'lx_origin_view_' + id;
@@ -3847,6 +3905,7 @@ function handleOriginRealtimeEvent(event, payload) {
     }
     Origin.threadSig = '';
     renderIgThread(true); renderOriginChats();
+    setCachedThreadMessages(Origin.activeChatId, Origin.threadMsgs);
   }
 }
 async function connectOriginRealtime(channelId) {
@@ -4076,12 +4135,39 @@ function renderOriginChats() {
   };
   lucide.createIcons();
 }
+function getCachedThreadMessages(channelId) {
+  if (!Origin._cachedThreads) Origin._cachedThreads = {};
+  if (Origin._cachedThreads[channelId]) return Origin._cachedThreads[channelId];
+  try {
+    const raw = localStorage.getItem('lx_chat_msgs_' + channelId);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        Origin._cachedThreads[channelId] = parsed;
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+function setCachedThreadMessages(channelId, messages) {
+  if (!channelId || !Array.isArray(messages)) return;
+  if (!Origin._cachedThreads) Origin._cachedThreads = {};
+  Origin._cachedThreads[channelId] = messages;
+  try {
+    localStorage.setItem('lx_chat_msgs_' + channelId, JSON.stringify(messages.slice(-200)));
+  } catch (e) {}
+}
+
 async function openOriginChatThread(channelId, channelName, avatarUrl = '', tokenPromise = null) {
   const driveTokenPromise = tokenPromise || originDriveToken();
   Origin.activeChatId = channelId;
   const presence = Origin.chats.find(chat => chat.channelId === channelId) || {};
   Origin.activeChat = { id: channelId, name: channelName, avatarUrl, channelEmail: presence.channelEmail, isOnline: !!presence.isOnline, isTyping: !!presence.isTyping };
-  Origin.threadMsgs = []; Origin.pending = []; Origin.threadSig = '';
+  const cached = getCachedThreadMessages(channelId);
+  Origin.threadLoaded = !!(cached && cached.length);
+  Origin.threadMsgs = cached ? [...cached] : [];
+  Origin.pending = []; Origin.threadSig = '';
   const layout = document.getElementById('originChatLayout');
   const placeholder = document.getElementById('originChatPlaceholder');
   const thread = document.getElementById('originChatThread');
@@ -4251,6 +4337,8 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
     const driveIds = new Set(driveMessages.map(message => message.id));
     Origin.threadMsgs = driveMessages.concat((data.messages || []).filter(message => !driveIds.has(message.id)))
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    Origin.threadLoaded = true;
+    setCachedThreadMessages(channelId, Origin.threadMsgs);
     const latestMessage = Origin.threadMsgs[Origin.threadMsgs.length - 1];
     const inboxItem = Origin.chats.find(chat => chat.channelId === channelId);
     if (latestMessage && inboxItem) {
@@ -4286,6 +4374,7 @@ async function loadIgMessages(channelId, force, driveTokenPromise = null) {
     }
   } catch (e) {
     if (Origin.activeChatId !== channelId) return;
+    Origin.threadLoaded = true;
     el.innerHTML = `<p class="ig-hint" style="padding-top:40px">${esc((e.data && e.data.error) || e.message || 'Messages load nahi ho paaye.')}</p>`;
   }
 }
@@ -4343,7 +4432,13 @@ function renderIgThread(stick) {
   const T = m => new Date(m.createdAt).getTime();
   const sepBefore = i => i === 0 || T(list[i]) - T(list[i - 1]) > 3600e3 || new Date(T(list[i])).toDateString() !== new Date(T(list[i - 1])).toDateString();
   let html = `<div class="ig-intro">${originAvatarHTML({ name: chat.name, avatarUrl: chat.avatarUrl })}<b>${esc(chat.name || '')}</b><span>Origin Play · LearnX</span><button class="btn btn-secondary btn-sm" onclick="openOriginChannel('${esc(chat.id || '')}')" type="button">View channel</button></div>`;
-  if (!list.length) html += '<p class="ig-hint">Abhi koi message nahi. Pehla message bhejein 👋</p>';
+  if (!list.length) {
+    if (Origin.threadLoaded === false) {
+      html += '<div style="padding:48px 16px;text-align:center"><div class="lx-spin" style="margin:0 auto 12px"></div><p class="ig-hint" style="margin:0">Messages load ho rahe hain...</p></div>';
+    } else {
+      html += '<p class="ig-hint">Abhi koi message nahi. Pehla message bhejein 👋</p>';
+    }
+  }
   list.forEach((m, i) => {
     const mine = m.senderId !== chat.id;
     if (sepBefore(i)) html += `<div class="ig-sep">${esc(chatThreadSep(T(m)))}</div>`;
@@ -4372,6 +4467,7 @@ function sendOriginChatMessage(event, forced) {
   if (chat) { chat.message = message; chat.senderId = State.user && State.user.id; chat.createdAt = now; chat.isSeen = false; chat.isUnread = false; }
   else if (Origin.activeChat) Origin.chats.push({ channelId, channelName: Origin.activeChat.name, avatarUrl: Origin.activeChat.avatarUrl, senderId: State.user && State.user.id, message, createdAt: now });
   renderOriginChats();
+  setCachedThreadMessages(channelId, (Origin.threadMsgs || []).concat(Origin.pending || []));
   sendDriveChatMessage(channelId, message, driveTokenPromise, Origin.activeChat && Origin.activeChat.name)
     .then(() => { tmp.sent = true; if (Origin.activeChatId === channelId) loadIgMessages(channelId, true); loadOriginChats(); })
     .catch(e => {
@@ -5043,18 +5139,34 @@ async function connectDriveAndContinue() {
 }
 async function resumeDriveSession() {
   if (!DB.get('driveAccessGranted', false)) { showDriveAccessGate(); return; }
+
+  // Agar valid token already available hai (sessionStorage se), to bina kisi blocking screen ke turant enterApp karein!
+  if (driveTokenOk() && Origin.token && Origin.ownerId === (State.user && State.user.id)) {
+    scheduleDriveRenewal();
+    enterApp();
+    // Background me sync hone dein bina user ko roke
+    loadServerState().then(() => driveSyncNow()).catch(err => console.warn('Background sync:', err));
+    return;
+  }
+
   showAuthBusy('Restoring Google Drive access…');
   try {
     const accessToken = await driveRequestToken();
     if (!accessToken) throw new Error('Drive access resume nahi hua. Allow Drive par tap karein.');
-    await verifyDriveAccount(accessToken);
-    await loadServerState();
-    const previousSync = Drive.lastSync;
-    await driveSyncNow();
-    if (Drive.err || !Drive.lastSync || Drive.lastSync === previousSync) throw new Error(Drive.err || 'Drive sync verify nahi ho paayi.');
     scheduleDriveRenewal();
     hideAuthBusy();
     enterApp();
+
+    // Verification aur sync background me chalega taaki app turant open ho
+    verifyDriveAccount(accessToken)
+      .then(() => loadServerState())
+      .then(() => driveSyncNow())
+      .catch(e => {
+        console.warn('Background drive sync warning:', e);
+        if (e && e.message && e.message.includes('email')) {
+          showDriveAccessGate(e.message);
+        }
+      });
   } catch (e) {
     hideAuthBusy();
     showDriveAccessGate(e.message || 'Drive access resume nahi hua.');
@@ -5079,11 +5191,18 @@ function scheduleDriveRenewal() {
 
 /* SPLASH */
 function initSplash() {
-  const statuses = ['Initializing…', 'Loading courses…', 'Connecting AI…', 'Preparing workspace…', 'Ready.'];
+  const statuses = ['Initializing…', 'Loading courses…', 'Ready.'];
   let i = 0;
   const st = document.getElementById('splashStatus');
-  const timer = setInterval(() => { if (i < statuses.length) st.textContent = statuses[i++]; else clearInterval(timer); }, 450);
-  setTimeout(() => { document.getElementById('splash').classList.add('hide'); setTimeout(() => { if (State.user && getToken()) resumeDriveSession(); else document.getElementById('authScreen').classList.add('show'); }, 400); }, 2400);
+  const timer = setInterval(() => { if (i < statuses.length && st) st.textContent = statuses[i++]; else clearInterval(timer); }, 180);
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    if (splash) splash.classList.add('hide');
+    setTimeout(() => {
+      if (State.user && getToken()) resumeDriveSession();
+      else { const auth = document.getElementById('authScreen'); if (auth) auth.classList.add('show'); }
+    }, 180);
+  }, 600);
 }
 
 /* AUTH SPEED HELPERS */
