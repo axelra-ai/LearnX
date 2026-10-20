@@ -1644,6 +1644,25 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
 .reel-comment-del svg{width:16px;height:16px}
 .reel-comment-form{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
 .reel-comment-form input{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--border-2);border-radius:100px;background:var(--surface-2);color:var(--text);font:inherit}
+/* ===== Posts (photo + text, like, comment) ===== */
+.posts-feed{display:flex;flex-direction:column;gap:18px;max-width:560px;margin:0 auto;padding-bottom:24px}
+.post-card{background:var(--surface-solid,var(--surface));border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.post-head{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.post-head .origin-avatar{width:38px;height:38px;flex:0 0 38px;font-size:14px}
+.post-who{flex:1;min-width:0;display:flex;flex-direction:column}
+.post-who b{font-size:14px;line-height:1.2;background:none;border:0;padding:0;color:var(--text);text-align:left;cursor:pointer;font:inherit;font-weight:700}
+.post-who small{color:var(--text-dimmer);font-size:12px}
+.post-del{background:none;border:0;color:var(--text-dimmer);cursor:pointer;padding:6px}
+.post-del svg{width:18px;height:18px}
+.post-img{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain;background:var(--surface-2)}
+.post-actions{display:flex;align-items:center;gap:16px;padding:10px 14px 2px}
+.post-act{display:flex;align-items:center;gap:6px;background:none;border:0;color:var(--text);cursor:pointer;font:inherit;font-size:14px;font-weight:600;padding:4px 2px}
+.post-act svg{width:24px;height:24px}
+.post-act.like.on{color:#f4245e}
+.post-act.like.on svg{fill:#f4245e}
+.post-text{margin:0;padding:6px 14px 14px;font-size:15px;line-height:1.5;color:var(--text);overflow-wrap:anywhere;white-space:pre-wrap}
+.post-text b{font-weight:700;margin-right:6px}
+.post-cmt-link{display:block;background:none;border:0;padding:0 14px 14px;margin-top:-6px;color:var(--text-dimmer);font:inherit;font-size:13.5px;cursor:pointer;text-align:left}
 .origin-kind-toggle{display:flex;gap:8px;margin:10px 0 4px}
 .origin-kind-toggle button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);color:var(--text);font:inherit;font-weight:600;cursor:pointer}
 .origin-kind-toggle button svg{width:16px;height:16px}
@@ -1751,6 +1770,7 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
         <div class="side-nav" data-nav="bookmarks" onclick="nav('bookmarks')"><i data-lucide="bookmark"></i><span>Bookmarks</span></div>
         <div class="side-nav" data-nav="origin" onclick="nav('origin')"><i data-lucide="circle-play"></i><span>Origin Play</span></div>
         <div class="side-nav" data-nav="reels" onclick="nav('reels')"><i data-lucide="film"></i><span>Reels</span></div>
+        <div class="side-nav" data-nav="posts" onclick="nav('posts')"><i data-lucide="image-plus"></i><span>Posts</span></div>
         <div class="side-nav" data-nav="originChat" onclick="nav('originChat')"><i data-lucide="messages-square"></i><span>Chats</span></div>
         <div class="side-nav" data-nav="ai" onclick="nav('ai')"><i data-lucide="sparkles"></i><span>AI Chat</span><span class="badge">AI</span></div>
       </div>
@@ -2130,6 +2150,14 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
           </div>
         </div>
 
+        <div class="page" id="page-posts">
+          <div class="origin-header">
+            <div><span class="eyebrow"><i data-lucide="image"></i> Photos &amp; text</span><h1 class="origin-title">Posts</h1></div>
+            <button class="btn btn-primary" onclick="openOriginUpload('post')" type="button"><i data-lucide="plus"></i>New post</button>
+          </div>
+          <div class="posts-feed" id="postsFeed"><div class="empty-state"><p>Posts load ho rahe hain...</p></div></div>
+        </div>
+
         <div class="page" id="page-originChat">
           <div class="origin-chat-layout" id="originChatLayout">
             <aside class="origin-chat-list">
@@ -2385,7 +2413,7 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
       <div class="mnav" data-nav="courses" onclick="nav('courses')"><i data-lucide="book-open"></i><span>Courses</span></div>
       <div class="mnav" data-nav="ai" onclick="nav('ai')"><i data-lucide="sparkles"></i><span>AI</span></div>
       <div class="mnav" data-nav="reels" onclick="nav('reels')"><i data-lucide="film"></i><span>Reels</span></div>
-      <div class="mnav" data-nav="profile" onclick="nav('profile')"><i data-lucide="user-circle"></i><span>Profile</span></div>
+      <div class="mnav" data-nav="posts" onclick="nav('posts')"><i data-lucide="image-plus"></i><span>Post</span></div>
       <div class="mnav" data-nav="settings" onclick="nav('settings')"><i data-lucide="settings"></i><span>More</span></div>
     </div>
   </nav>
@@ -2456,11 +2484,12 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
     <div class="origin-kind-toggle" id="originKindToggle">
       <button type="button" class="active" data-kind="video" onclick="setOriginUploadKind('video')"><i data-lucide="video"></i>Video</button>
       <button type="button" data-kind="reel" onclick="setOriginUploadKind('reel')"><i data-lucide="film"></i>Reel</button>
+      <button type="button" data-kind="post" onclick="setOriginUploadKind('post')"><i data-lucide="image"></i>Post</button>
     </div>
     <p class="modal-sub" id="originUploadSub">Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.</p>
-    <div class="field"><label class="field-label" for="originVideoTitle">Video title</label><input type="text" class="field-input" id="originVideoTitle" maxlength="160" placeholder="Video ka naam"></div>
-    <div class="field"><label class="field-label" for="originVideoDescription">Description</label><textarea class="field-input" id="originVideoDescription" maxlength="2000" rows="3" placeholder="Video ke baare me"></textarea></div>
-    <div class="field"><label class="field-label" for="originVideoThumb">Thumbnail (optional)</label><input type="file" class="field-input" id="originVideoThumb" accept="image/*"></div>
+    <div class="field" id="originTitleField"><label class="field-label" for="originVideoTitle">Video title</label><input type="text" class="field-input" id="originVideoTitle" maxlength="160" placeholder="Video ka naam"></div>
+    <div class="field"><label class="field-label" for="originVideoDescription" id="originDescLabel">Description</label><textarea class="field-input" id="originVideoDescription" maxlength="2000" rows="3" placeholder="Video ke baare me"></textarea></div>
+    <div class="field" id="originThumbField"><label class="field-label" for="originVideoThumb">Thumbnail (optional)</label><input type="file" class="field-input" id="originVideoThumb" accept="image/*"></div>
     <div class="field"><label class="field-label" for="originVideoFile" id="originVideoFileLabel">Video file (max 2 GB)</label><input type="file" class="field-input" id="originVideoFile" accept="video/*"></div>
     <div id="originUploadStatus" class="modal-sub" aria-live="polite"></div>
     <div class="origin-progress" id="originUploadProgress" hidden><span id="originUploadProgressBar"></span></div>
@@ -3178,6 +3207,7 @@ function openChatFromUrl() {
   } catch (e) {}
 }
 /* ===== REELS ===== */
+const Posts = { items: [] };
 const Reels = { items: [], observer: null, activeId: null, muted: true, commentsFor: null, ownerId: null };
 function reelFmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n); }
 function reelAgo(ts) {
@@ -3472,6 +3502,8 @@ function reelToggleSound() {
   lucide.createIcons();
   if (!Reels.muted) showToast('Sound on', 'volume-2');
 }
+function mediaItem(id) { return Reels.items.find(x => x.id === id) || Posts.items.find(x => x.id === id); }
+function mediaRefresh(r) { if (Posts.items.includes(r)) postRefreshUi(r); else reelRefreshUi(r); }
 function reelRefreshUi(r) {
   const s = document.querySelector(`.reel[data-reel-id="${r.id}"]`); if (!s) return;
   const like = s.querySelector('.reel-act.like'); like.classList.toggle('on', !!r.likedByMe); like.querySelector('span').textContent = reelFmt(r.likeCount);
@@ -3506,7 +3538,7 @@ async function openReelComments(id) {
     const d = await apiFetch('/api/videos?action=comments&videoId=' + encodeURIComponent(id));
     if (Reels.commentsFor !== id) return;
     Reels.ownerId = d.ownerId;
-    const r = Reels.items.find(x => x.id === id); if (r) { r.commentCount = (d.comments || []).length; reelRefreshUi(r); }
+    const r = mediaItem(id); if (r) { r.commentCount = (d.comments || []).length; mediaRefresh(r); }
     document.getElementById('reelCommentsTitle').textContent = 'Comments (' + (d.comments || []).length + ')';
     list.innerHTML = (d.comments || []).length ? d.comments.map(reelCommentHTML).join('') : '<p class="origin-channel-stats" style="padding:24px 0;text-align:center">Abhi koi comment nahi. Pehla comment aap karein.</p>';
     lucide.createIcons();
@@ -3524,7 +3556,7 @@ async function postReelComment(event) {
     const list = document.getElementById('reelCommentList');
     if (!list.querySelector('.reel-comment')) list.innerHTML = '';
     list.insertAdjacentHTML('afterbegin', reelCommentHTML(d.comment));
-    const r = Reels.items.find(x => x.id === id); if (r) { r.commentCount = d.commentCount; reelRefreshUi(r); }
+    const r = mediaItem(id); if (r) { r.commentCount = d.commentCount; mediaRefresh(r); }
     document.getElementById('reelCommentsTitle').textContent = 'Comments (' + d.commentCount + ')';
     lucide.createIcons();
   } catch (e) { showToast((e.data && e.data.error) || 'Comment nahi ho paaya', 'alert-circle'); }
@@ -3535,9 +3567,60 @@ async function deleteReelComment(commentId) {
   try {
     const d = await apiFetch('/api/videos?action=comment&id=' + encodeURIComponent(commentId), { method: 'DELETE' });
     const node = document.querySelector(`.reel-comment[data-comment-id="${commentId}"]`); if (node) node.remove();
-    const r = Reels.items.find(x => x.id === Reels.commentsFor); if (r) { r.commentCount = d.commentCount; reelRefreshUi(r); }
+    const r = mediaItem(Reels.commentsFor); if (r) { r.commentCount = d.commentCount; mediaRefresh(r); }
     document.getElementById('reelCommentsTitle').textContent = 'Comments (' + d.commentCount + ')';
   } catch (e) { showToast((e.data && e.data.error) || 'Comment delete nahi ho paaya', 'alert-circle'); }
+}
+/* ===== POSTS: photo + text, like, comment ===== */
+function postHTML(r) {
+  const own = State.user && r.channelId === State.user.id;
+  const id = esc(r.id);
+  const img = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(r.driveFileId) + '&sz=w1080';
+  const text = r.description || '';
+  return `<article class="post-card" data-post-id="${originAttr(r.id)}">
+    <div class="post-head">${originAvatarHTML({ name: r.channelName, avatarUrl: r.avatarUrl })}
+      <div class="post-who"><b onclick="openOriginChannel('${esc(r.channelId)}')">${esc(r.channelName || '')}</b><small>${esc(reelAgo(r.createdAt))}${reelAgo(r.createdAt) === 'abhi' ? '' : ' pehle'}</small></div>
+      ${own ? `<button class="post-del" onclick="deleteOriginVideo('${id}')" type="button" aria-label="Delete post"><i data-lucide="trash-2"></i></button>` : ''}
+    </div>
+    <img class="post-img" src="${originAttr(img)}" alt="" loading="lazy" draggable="false" ondblclick="postLike('${id}')">
+    <div class="post-actions">
+      <button class="post-act like ${r.likedByMe ? 'on' : ''}" onclick="postLike('${id}')" type="button" aria-label="Like"><i data-lucide="heart"></i><span>${reelFmt(r.likeCount)}</span></button>
+      <button class="post-act cmt" onclick="openReelComments('${id}')" type="button" aria-label="Comments"><i data-lucide="message-circle"></i><span>${reelFmt(r.commentCount)}</span></button>
+    </div>
+    ${text ? `<p class="post-text"><b>${esc(r.channelName || '')}</b>${esc(text)}</p>` : '<div style="height:10px"></div>'}
+  </article>`;
+}
+function postRefreshUi(r) {
+  const card = document.querySelector(`.post-card[data-post-id="${r.id}"]`); if (!card) return;
+  const like = card.querySelector('.post-act.like'); like.classList.toggle('on', !!r.likedByMe); like.querySelector('span').textContent = reelFmt(r.likeCount);
+  card.querySelector('.post-act.cmt span').textContent = reelFmt(r.commentCount);
+}
+async function loadPostsPage() {
+  const feed = document.getElementById('postsFeed'); if (!feed) return;
+  if (!getToken()) { feed.innerHTML = '<div class="empty-state"><p>Posts dekhne ke liye login karein.</p></div>'; return; }
+  if (!Posts.items.length) feed.innerHTML = '<div class="empty-state"><p>Posts load ho rahe hain...</p></div>';
+  try {
+    const data = await apiFetch('/api/videos?action=feed&kind=post');
+    Posts.items = data.videos || [];
+    Posts.items.forEach(r => Origin.videos.set(r.id, r));
+    feed.innerHTML = Posts.items.length ? Posts.items.map(postHTML).join('') : '<div class="empty-state"><i data-lucide="image"></i><h3>Abhi koi post nahi hai</h3><p>Pehla post aap karein: photo aur uske niche text.</p><button class="btn btn-primary" onclick="openOriginUpload(\'post\')" type="button"><i data-lucide="plus"></i>New post</button></div>';
+  } catch (e) {
+    feed.innerHTML = `<div class="empty-state"><i data-lucide="cloud-off"></i><h3>Posts load nahi ho paaye</h3><p>${esc((e.data && e.data.error) || 'Thodi der baad dobara try karein.')}</p></div>`;
+  }
+  lucide.createIcons();
+}
+async function postLike(id) {
+  const r = Posts.items.find(x => x.id === id); if (!r) return;
+  const before = { liked: !!r.likedByMe, count: Number(r.likeCount) || 0 };
+  r.likedByMe = !before.liked; r.likeCount = Math.max(0, before.count + (before.liked ? -1 : 1)); postRefreshUi(r);
+  try {
+    const d = await apiFetch('/api/videos?action=like', { method: 'POST', body: JSON.stringify({ videoId: id }) });
+    r.likedByMe = d.liked; r.likeCount = d.likeCount;
+  } catch (e) {
+    r.likedByMe = before.liked; r.likeCount = before.count;
+    showToast((e.data && e.data.error) || 'Like nahi ho paaya', 'alert-circle');
+  }
+  postRefreshUi(r);
 }
 /* ===== PROFILE PHOTO (crop + upload) ===== */
 const Avatar = { img: null, zoom: 1, base: 1, ox: 0, oy: 0, drag: null };
@@ -4375,18 +4458,27 @@ async function originLoadMine(container) {
   } catch (e) { container.innerHTML = '<div class="empty-state"><p>Videos load nahi ho paaye.</p></div>'; }
 }
 function setOriginUploadKind(kind) {
-  Origin.uploadKind = kind === 'reel' ? 'reel' : 'video';
-  const reel = Origin.uploadKind === 'reel';
+  Origin.uploadKind = kind === 'reel' ? 'reel' : kind === 'post' ? 'post' : 'video';
+  const reel = Origin.uploadKind === 'reel', post = Origin.uploadKind === 'post';
   document.querySelectorAll('#originKindToggle button').forEach(b => b.classList.toggle('active', b.dataset.kind === Origin.uploadKind));
   const label = document.getElementById('originVideoFileLabel');
-  if (label) label.textContent = reel ? 'Reel video (max 90 second, vertical behtar, max 500 MB)' : 'Video file (max 2 GB)';
+  if (label) label.textContent = post ? 'Photo (max 10 MB)' : reel ? 'Reel video (max 90 second, vertical behtar, max 500 MB)' : 'Video file (max 2 GB)';
+  const fileInput = document.getElementById('originVideoFile');
+  if (fileInput) { fileInput.accept = post ? 'image/*' : 'video/*'; fileInput.value = ''; }
+  const titleField = document.getElementById('originTitleField'), thumbField = document.getElementById('originThumbField');
+  if (titleField) titleField.style.display = post ? 'none' : '';
+  if (thumbField) thumbField.style.display = post ? 'none' : '';
+  const descLabel = document.getElementById('originDescLabel');
+  if (descLabel) descLabel.textContent = post ? 'Post ka text (photo ke niche dikhega)' : 'Description';
+  const desc = document.getElementById('originVideoDescription');
+  if (desc) desc.placeholder = post ? 'Photo ke baare me kuch likhein...' : 'Video ke baare me';
   const sub = document.getElementById('originUploadSub');
-  if (sub) sub.textContent = reel ? 'Reel aapke Google Drive me save hogi aur Reels tab me dikhegi. Public playback ke liye link view-only share hoga.' : 'Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.';
+  if (sub) sub.textContent = post ? 'Photo aapke Google Drive me save hogi aur Posts tab me text ke saath dikhegi. Public view ke liye link view-only share hoga.' : reel ? 'Reel aapke Google Drive me save hogi aur Reels tab me dikhegi. Public playback ke liye link view-only share hoga.' : 'Video aapke Google Drive me save hogi. Public playback ke liye video link view-only share hoga.';
 }
 function openOriginUpload(kind) {
   if (!getToken() || !State.user) { showToast('Video upload karne ke liye account me login karein', 'log-in'); return; }
-  if (currentPage !== 'origin' && currentPage !== 'reels') nav('origin');
-  setOriginUploadKind(kind || (currentPage === 'reels' ? 'reel' : 'video'));
+  if (currentPage !== 'origin' && currentPage !== 'reels' && currentPage !== 'posts') nav('origin');
+  setOriginUploadKind(kind || (currentPage === 'reels' ? 'reel' : currentPage === 'posts' ? 'post' : 'video'));
   document.getElementById('originUploadModal').classList.add('open');
   document.getElementById('originUploadStatus').textContent = '';
   lucide.createIcons();
@@ -4451,10 +4543,10 @@ async function uploadDriveResumable(uploadUrl, token, file, onProgress) {
   if (finalState.complete) return finalState.file;
   throw new Error('Google Drive upload incomplete hai; retry karein.');
 }
-async function uploadOptionalThumbnail(token, file) {
+async function uploadOptionalThumbnail(token, file, maxBytes = 5 * 1024 * 1024) {
   if (!file) return null;
   if (!file.type.startsWith('image/')) throw new Error('Thumbnail sirf image file hona chahiye.');
-  if (file.size > 5 * 1024 * 1024) throw new Error('Thumbnail 5 MB se chhota hona chahiye.');
+  if (file.size > maxBytes) throw new Error('Image ' + Math.round(maxBytes / 1048576) + ' MB se chhoti honi chahiye.');
   const boundary = 'learnxthumb' + Date.now().toString(36);
   const metadata = JSON.stringify({ name: 'learnx-thumb-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + (file.type.includes('png') ? 'png' : 'jpg'), mimeType: file.type });
   const arrayBuffer = await file.arrayBuffer();
@@ -4551,7 +4643,57 @@ async function originFaststart(file) {
   }
 }
 
+async function postPrepareImage(file) {
+  // Badi photo ko 1600px tak chhota karke JPEG banate hain: Drive me kam jagah, feed tez.
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = url; });
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.86));
+    if (blob && blob.size) return new File([blob], 'post.jpg', { type: 'image/jpeg' });
+  } catch (e) { console.warn('Post image resize skip:', e && e.message); }
+  return file;
+}
+async function uploadOriginPost() {
+  const fileInput = document.getElementById('originVideoFile');
+  const descriptionInput = document.getElementById('originVideoDescription');
+  const status = document.getElementById('originUploadStatus');
+  const button = document.getElementById('originUploadSubmit');
+  const progress = document.getElementById('originUploadProgress');
+  const progressBar = document.getElementById('originUploadProgressBar');
+  const picked = fileInput.files[0];
+  const text = descriptionInput.value.trim();
+  if (!picked) { status.textContent = 'Post ke liye photo select karein.'; return; }
+  if (!picked.type.startsWith('image/')) { status.textContent = 'Sahi photo (image file) select karein.'; return; }
+  button.disabled = true; progress.hidden = false; progressBar.style.width = '8%';
+  let createdId = null;
+  try {
+    status.textContent = 'Google Drive permission ka intezar...';
+    const token = await originDriveToken();
+    if (!token) throw new Error('Drive access allow nahi hua. Dobara try karein.');
+    status.textContent = 'Photo taiyar ho rahi hai...';
+    const photo = await postPrepareImage(picked);
+    progressBar.style.width = '30%'; status.textContent = 'Aapki Google Drive me upload ho raha hai...';
+    createdId = await uploadOptionalThumbnail(token, photo, 10 * 1024 * 1024);
+    progressBar.style.width = '80%'; status.textContent = 'Post publish ho raha hai...';
+    const title = (text.split('\n')[0] || 'Post').slice(0, 160);
+    await apiFetch('/api/videos?action=publish', { method: 'POST', body: JSON.stringify({ kind: 'post', title, description: text, driveFileId: createdId, mimeType: photo.type, sizeBytes: photo.size, googleToken: token }) });
+    progressBar.style.width = '100%';
+    showToast('Post ho gaya', 'image');
+    closeOriginUpload(); fileInput.value = ''; descriptionInput.value = '';
+    if (currentPage !== 'posts') nav('posts'); else loadPostsPage();
+  } catch (e) {
+    if (createdId) { try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(createdId), { method: 'DELETE' }); } catch (cleanupError) {} }
+    console.error('Post upload error:', e);
+    status.textContent = (e.data && e.data.error) || e.message || 'Post upload nahi hua.';
+  } finally { button.disabled = false; }
+}
 async function uploadOriginVideo() {
+  if (Origin.uploadKind === 'post') return uploadOriginPost();
   const fileInput = document.getElementById('originVideoFile');
   const thumbInput = document.getElementById('originVideoThumb');
   const titleInput = document.getElementById('originVideoTitle');
@@ -4616,7 +4758,7 @@ async function uploadOriginVideo() {
 }
 async function deleteOriginVideo(videoId) {
   const video = Origin.videos.get(videoId);
-  if (!video || !confirm('Ye video aapke channel aur Google Drive se delete ho jayegi. Continue?')) return;
+  if (!video || !confirm(video.kind === 'post' ? 'Ye post aapke channel aur Google Drive se delete ho jayega. Continue?' : 'Ye video aapke channel aur Google Drive se delete ho jayegi. Continue?')) return;
   try {
     try { await originDriveRequest('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(video.driveFileId), { method: 'DELETE' }); }
     catch (e) { if (e.status !== 404) throw e; }
@@ -4625,6 +4767,7 @@ async function deleteOriginVideo(videoId) {
     renderProfileTab('videos');
     if (currentPage === 'origin') loadOriginPage();
     if (currentPage === 'reels') loadReelsPage();
+    if (currentPage === 'posts') loadPostsPage();
     loadOriginFeed('homeOriginFeed', 3);
     showToast('Delete ho gaya', 'trash-2');
   } catch (e) { showToast(e.data && e.data.error || e.message || 'Video delete nahi ho paaya', 'alert-circle'); }
@@ -5077,7 +5220,7 @@ function applyUser() {
 
 /* NAV */
 let currentPage = 'home';
-const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', reels: 'Reels', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
+const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', reels: 'Reels', posts: 'Posts', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
   if (p !== 'reels' && typeof stopReels === 'function') stopReels();
   document.body.classList.toggle('reels-surface', p === 'reels');
@@ -5099,6 +5242,7 @@ function nav(p) {
   if (p === 'home') renderHome();
   if (p === 'origin') loadOriginPage();
   if (p === 'reels') loadReelsPage();
+  if (p === 'posts') loadPostsPage();
   if (p === 'originChat') loadOriginChats();
   if (p === 'ai') { renderChatHistory(); renderChatMessages(); }
   if (p === 'settings') applyAllSettings();
@@ -6510,7 +6654,7 @@ Object.assign(window, {
   switchAuth, oauthLogin,
   toggleTheme, setTheme, toggleThemeDropdown, closeThemeDropdown,
   switchCourseTab, searchCourses, switchProfileTab,
-  switchSettingsPanel, toggleSetting, testPush, setOriginUploadKind, openOriginUpload, reelTap, reelFullscreen, reelPosterFit, originFitThumb, reelLike, reelToggleSound, openReelComments, closeReelComments, postReelComment, deleteReelComment, setFontSize, setSelect, setAIstyle,
+  switchSettingsPanel, toggleSetting, testPush, setOriginUploadKind, openOriginUpload, reelTap, reelFullscreen, reelPosterFit, originFitThumb, reelLike, reelToggleSound, openReelComments, closeReelComments, postLike, loadPostsPage, postReelComment, deleteReelComment, setFontSize, setSelect, setAIstyle,
   openEditName, closeEditName, saveName,
   addAnotherAccount, logout, exportData, clearProgress, clearChats, resetAll,
   openSidebar, closeSidebar, showToast, toggleMini,
