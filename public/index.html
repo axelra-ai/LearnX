@@ -1712,6 +1712,8 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
   #page-ai .ai-hd-menu{display:grid!important}
 }
 </style>
+<link rel="preconnect" href="https://drive.usercontent.google.com">
+<link rel="preconnect" href="https://drive.google.com">
 </head>
 <body>
 
@@ -3364,8 +3366,8 @@ function reelCanPrefetch() {
 function reelIdx(section) { return Array.prototype.indexOf.call(section.parentNode ? section.parentNode.children : [], section); }
 function reelPrefetchNext(section) {
   if (!reelCanPrefetch()) return;
-  const next = section.nextElementSibling;
-  if (next && next.classList.contains('reel')) reelEnsureVideo(next, true);
+  let n = section.nextElementSibling;
+  for (let i = 0; i < 2 && n && n.classList.contains('reel'); i++, n = n.nextElementSibling) reelEnsureVideo(n, true);
 }
 function reelEnsureVideo(section, preloadOnly) {
   const media = section.querySelector('.reel-media'); if (!media) return null;
@@ -3392,10 +3394,7 @@ function reelEnsureVideo(section, preloadOnly) {
   });
   video.addEventListener('waiting', () => { if (Reels.activeId === id && video._lxWant) section.classList.add('loading'); });
   video.addEventListener('canplay', () => {
-    if (Reels.activeId === id) { reelPrefetchNext(section); return; }
-    // agli-agli reel bhi chain me preload (active se 2 aage tak)
-    const act = Reels.activeId && document.querySelector(`.reel[data-reel-id="${Reels.activeId}"]`);
-    if (act && reelIdx(section) - reelIdx(act) === 1) reelPrefetchNext(section);
+    if (Reels.activeId === id) reelPrefetchNext(section);
   });
   video.addEventListener('webkitendfullscreen', () => { video.controls = false; });
   media.appendChild(video);
@@ -3417,6 +3416,8 @@ function activateReel(section) {
     if (video.readyState < 3) section.classList.add('loading');
     try { if (video.currentTime > 0.1) video.currentTime = 0; } catch (e) {}
     lxVideoPlay(video);
+    if (video.readyState >= 3) reelPrefetchNext(section);
+    else setTimeout(() => { if (Reels.activeId === id) reelPrefetchNext(section); }, 1500);
   }
   reelTrim(section);
   const key = 'lx_origin_view_' + id;
