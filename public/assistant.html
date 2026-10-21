@@ -1,98 +1,624 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#11151c">
-<title>LearnX AI Assistant</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<style>
-:root{--bg:#11151c;--panel:#1b222b;--panel-2:#222c36;--line:rgba(255,255,255,.12);--text:#f4f1e9;--muted:#9da6ad;--gold:#e3b877;--teal:#79c7bb;--danger:#d87370}*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font-family:'DM Sans',sans-serif;background:radial-gradient(circle at 18% 5%,rgba(121,199,187,.17),transparent 34%),radial-gradient(circle at 85% 88%,rgba(227,184,119,.16),transparent 38%),var(--bg)}button,textarea{font:inherit;color:inherit}button{border:0;cursor:pointer}.assistant-shell{width:min(1120px,100%);min-height:100vh;margin:auto;padding:24px 24px 32px;display:flex;flex-direction:column}.top{display:flex;align-items:center;gap:14px}.back{width:42px;height:42px;border-radius:13px;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center}.back:hover{border-color:var(--gold);color:var(--gold)}.brand{font-family:'Space Grotesk';font-size:18px;font-weight:600}.status{margin-left:auto;color:var(--teal);font-size:12px;display:flex;align-items:center;gap:7px}.status:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 12px var(--teal)}.hero{display:grid;grid-template-columns:1fr 330px;gap:52px;align-items:center;flex:1;padding:70px 0 48px}.copy h1{font-family:'Space Grotesk';font-size:clamp(2.5rem,7vw,5.4rem);line-height:.98;letter-spacing:-.04em;margin:0 0 20px;max-width:700px}.copy h1 span{color:var(--gold)}.copy p{color:var(--muted);font-size:16px;line-height:1.7;max-width:510px;margin:0}.orb-wrap{display:grid;place-items:center}.orb{width:min(300px,65vw);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#f2d49f 0 5%,#d59e56 18%,#728d88 52%,#2b3840 70%,#1a222a 100%);box-shadow:0 0 0 16px rgba(227,184,119,.06),0 0 70px rgba(121,199,187,.26),inset -28px -25px 50px rgba(0,0,0,.5);animation:float 5s ease-in-out infinite}.orb i{width:70px;height:70px;color:#fff;filter:drop-shadow(0 2px 12px rgba(0,0,0,.3))}.orb.listening{animation:pulse 1.2s ease-in-out infinite;box-shadow:0 0 0 20px rgba(121,199,187,.09),0 0 100px rgba(121,199,187,.5),inset -28px -25px 50px rgba(0,0,0,.5)}@keyframes float{50%{transform:translateY(-10px)}}@keyframes pulse{50%{transform:scale(1.05)}}.panel{background:rgba(27,34,43,.88);border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.27);padding:18px}.transcript{min-height:72px;max-height:180px;overflow:auto;color:var(--text);line-height:1.6;margin-bottom:14px}.transcript.empty{color:var(--muted)}.controls{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:14px}.mic{width:58px;height:58px;border-radius:50%;background:var(--gold);color:#172027;display:grid;place-items:center;box-shadow:0 8px 24px rgba(227,184,119,.26)}.mic:hover{transform:translateY(-2px);background:#f1cb8d}.mic.active{background:var(--danger);color:white}.text-input{flex:1;min-width:0;background:transparent;border:0;outline:0;resize:none;padding:8px;font-size:14px;line-height:1.5}.text-input::placeholder{color:var(--muted)}.send{width:42px;height:42px;border-radius:12px;background:var(--panel-2);display:grid;place-items:center}.send:hover{color:var(--gold)}.hint{font-size:12px;color:var(--muted);margin:13px 2px 0}.error{color:#f0a09c}.footer{text-align:center;color:var(--muted);font-size:12px}.footer a{color:var(--gold);text-decoration:none}@media(max-width:760px){.assistant-shell{padding:18px 16px 24px}.hero{grid-template-columns:1fr;gap:30px;padding:56px 0 28px}.orb-wrap{order:-1}.orb{width:190px}.orb i{width:48px}.copy{text-align:center}.copy p{margin:auto}.panel{padding:14px}}
-</style>
-<style>
-.assistant-shell{min-height:100vh;display:flex;flex-direction:column;padding:0 24px 20px}
-.top{padding:14px 0;flex:0 0 auto}
-.top .brand,.top .status,.copy,.footer,.transcript,.hint{display:none!important}
-.hero{display:grid;grid-template-columns:1fr;place-items:center;flex:1;min-height:0;padding:20px 0}
-.orb-wrap{width:100%;place-items:center}
-.orb{width:min(400px,72vw);transition:box-shadow .2s ease}
-.orb.listening,.orb.speaking{animation:orbVoiceMorph .3s ease-in-out infinite alternate;box-shadow:0 0 0 20px rgba(227,184,119,.09),0 0 100px rgba(121,199,187,.58),inset -22px -18px 38px rgba(0,0,0,.45)}
-@keyframes orbVoiceMorph{from{transform:scaleX(1.18) scaleY(.82)}to{transform:scaleX(.78) scaleY(1.16)}}
-.panel{width:min(760px,100%);align-self:center;margin:0;padding:12px;background:rgba(27,34,43,.82);border:1px solid var(--line);border-radius:18px}
-#messageInput::placeholder{color:transparent}
-.panel.speaking .controls,.panel:has(#micButton.active) .controls{border-color:var(--teal);box-shadow:0 0 0 3px rgba(121,199,187,.12)}
-@media(max-width:640px){.assistant-shell{padding:0 14px calc(12px + env(safe-area-inset-bottom))}.top{padding:10px 0}.orb{width:min(340px,76vw)}.panel{padding:9px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0e12">
+  <meta name="description" content="LearnX AI learning assistant">
+  <title>LearnX AI Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0e12;
+      --surface: #15171d;
+      --surface-2: #1b1e25;
+      --surface-3: #222630;
+      --border: rgba(255,255,255,.08);
+      --border-strong: rgba(255,255,255,.14);
+      --text: #ecebe8;
+      --muted: #9c9fa8;
+      --dim: #70737d;
+      --accent: #e2b880;
+      --accent-soft: rgba(226,184,128,.12);
+      --accent-rgb: 226,184,128;
+      --danger: #d4807c;
+      --shadow: 0 24px 80px rgba(0,0,0,.28);
+      font-family: Inter, system-ui, sans-serif;
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f7f5f0;
+      --surface: #fff;
+      --surface-2: #f0ede7;
+      --surface-3: #e9e5dc;
+      --border: rgba(20,20,30,.08);
+      --border-strong: rgba(20,20,30,.14);
+      --text: #18171c;
+      --muted: #6b6878;
+      --dim: #9793a0;
+      --shadow: 0 24px 80px rgba(36,29,18,.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 70% 50% at 4% -12%, rgba(var(--accent-rgb),.11), transparent 62%),
+        radial-gradient(ellipse 48% 42% at 100% 105%, rgba(var(--accent-rgb),.07), transparent 66%),
+        var(--bg);
+    }
+    button, textarea { color: inherit; font: inherit; }
+    button { cursor: pointer; }
+    .assistant-app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; align-items: center; gap: 14px;
+      height: 68px; padding: 0 30px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(18px);
+    }
+    .icon-btn, .back-link, .theme-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); background: var(--surface);
+      transition: .18s ease;
+    }
+    .icon-btn { width: 40px; height: 40px; border-radius: 13px; }
+    .icon-btn:hover, .back-link:hover, .theme-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+    .icon-btn svg { width: 18px; height: 18px; }
+    .back-link { gap: 9px; padding: 9px 13px; border-radius: 13px; text-decoration: none; font-size: 12px; font-weight: 600; }
+    .back-link svg { width: 16px; height: 16px; }
+    .brand { display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 800; letter-spacing: -.04em; }
+    .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; color: var(--bg); border-radius: 10px; background: linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 55%,#fff)); }
+    .brand-mark svg { width: 17px; height: 17px; stroke-width: 2.4; }
+    .brand em { color: var(--accent); font-style: normal; }
+    .top-spacer { flex: 1; }
+    .ready-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11px; }
+    .ready-dot { width: 7px; height: 7px; border-radius: 50%; background: #78b98a; box-shadow: 0 0 10px rgba(120,185,138,.45); }
+    .voice-select {
+      max-width: 190px; height: 38px; padding: 0 30px 0 11px;
+      border: 1px solid var(--border); border-radius: 12px;
+      color: var(--muted); background: var(--surface);
+      font: inherit; font-size: 11px; outline: 0;
+    }
+    .voice-select:focus { border-color: var(--accent); }
+    .voice-select option { color: var(--text); background: var(--surface); }
+    .theme-btn { width: 38px; height: 38px; border-radius: 12px; }
+    .theme-btn svg { width: 17px; height: 17px; }
+    .workspace { width: min(980px,100%); flex: 1; margin: 0 auto; padding: 38px 30px 26px; display: flex; flex-direction: column; }
+    .intro { text-align: center; padding: 10px 0 26px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    .eyebrow svg { width: 15px; height: 15px; }
+    h1 { max-width: 690px; margin: 0 auto 14px; font-family: Newsreader, Georgia, serif; font-size: clamp(38px,6vw,64px); font-weight: 400; line-height: 1.03; letter-spacing: -.045em; }
+    h1 span { color: var(--accent); }
+    .intro p { max-width: 540px; margin: 0 auto; color: var(--muted); font-size: 14px; line-height: 1.75; }
+    .voice-stage {
+      display: flex; flex: 1; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 300px; padding: 28px 24px;
+      border: 1px solid var(--border); border-radius: 26px;
+      background: color-mix(in srgb,var(--surface) 88%,transparent); box-shadow: var(--shadow);
+      text-align: center; transition: border-color .2s,background .2s;
+    }
+    .voice-stage[data-state="listening"] { border-color: rgba(var(--accent-rgb),.45); background: color-mix(in srgb,var(--accent-soft) 42%,var(--surface)); }
+    .voice-stage[data-state="speaking"] { border-color: rgba(var(--accent-rgb),.35); }
+    .voice-stage[data-state="error"] { border-color: color-mix(in srgb,var(--danger) 50%,var(--border)); }
+    .voice-mark { display: flex; align-items: center; justify-content: center; gap: 7px; height: 68px; margin-bottom: 20px; color: var(--accent); }
+    .voice-mark i { display: block; width: 5px; height: 18px; border-radius: 6px; background: currentColor; opacity: .6; }
+    .voice-mark i:nth-child(2),.voice-mark i:nth-child(6) { height: 30px; opacity: .8; }
+    .voice-mark i:nth-child(3),.voice-mark i:nth-child(5) { height: 44px; }
+    .voice-mark i:nth-child(4) { height: 60px; }
+    .voice-stage[data-state="listening"] .voice-mark i { animation: soundwave .75s ease-in-out infinite alternate; }
+    .voice-stage[data-state="listening"] .voice-mark i:nth-child(2n) { animation-delay: .18s; }
+    .voice-stage[data-state="listening"] .voice-mark i:nth-child(3n) { animation-delay: .34s; }
+    .voice-stage[data-state="speaking"] .voice-mark i { animation: soundwave 1.1s ease-in-out infinite alternate; }
+    .voice-stage[data-state="speaking"] .voice-mark i:nth-child(2n) { animation-delay: .22s; }
+    @keyframes soundwave { to { transform: scaleY(.38); opacity: .42; } }
+    .voice-status { margin: 0 0 8px; font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+    .voice-guidance { max-width: 430px; min-height: 22px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .voice-caption { width: min(600px,100%); max-height: 160px; overflow-y: auto; margin-top: 21px; padding: 13px 16px; border-left: 2px solid var(--accent); border-radius: 0 12px 12px 0; background: var(--surface-2); text-align: left; }
+    .voice-caption[hidden] { display: none; }
+    .caption-label { display: block; margin-bottom: 5px; color: var(--accent); font-size: 9px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .caption-text { color: var(--text); font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+    .caption-text p { margin: 0 0 8px; }.caption-text p:last-child { margin-bottom: 0; }
+    .caption-text h2,.caption-text h3,.caption-text h4 { margin: 9px 0 5px; font-size: 1.05em; }
+    .caption-text ul,.caption-text ol { margin: 6px 0; padding-left: 20px; }
+    .caption-text pre { max-width: 100%; overflow: auto; padding: 10px; border-radius: 9px; background: rgba(0,0,0,.16); }
+    .caption-text code { font-family: Consolas,monospace; font-size: .93em; }
+    .message-tools { display: flex; gap: 6px; margin-top: 8px; }
+    .tool-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 8px; color: var(--dim); background: transparent; font-size: 10px; }
+    .tool-btn:hover { color: var(--accent); background: var(--accent-soft); }
+    .tool-btn svg { width: 13px; height: 13px; }
+    .voice-actions { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 26px; }
+    .talk-btn { min-width: 184px; height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 22px; border: 0; border-radius: 16px; color: var(--bg); background: var(--accent); box-shadow: 0 10px 26px rgba(var(--accent-rgb),.2); font-size: 13px; font-weight: 700; transition: transform .18s,filter .18s,box-shadow .18s; }
+    .talk-btn:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 14px 32px rgba(var(--accent-rgb),.28); }
+    .talk-btn.active { color: #fff; background: var(--danger); box-shadow: 0 10px 26px color-mix(in srgb,var(--danger) 24%,transparent); }
+    .talk-btn svg { width: 18px; height: 18px; }
+    .secondary-btn { height: 44px; display: inline-flex; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 13px; color: var(--muted); background: var(--surface); font-size: 11px; font-weight: 600; }
+    .secondary-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .secondary-btn svg { width: 15px; height: 15px; }
+    .composer { width: min(640px,100%); margin: 18px auto 0; padding: 13px 14px 11px; border: 1px solid var(--border-strong); border-radius: 18px; background: var(--surface-2); transition: border-color .2s,box-shadow .2s; }
+    .composer[hidden] { display: none; }
+    .composer:focus-within { border-color: rgba(var(--accent-rgb),.5); box-shadow: 0 0 0 3px var(--accent-soft); }
+    textarea { display: block; width: 100%; min-height: 48px; max-height: 150px; resize: none; padding: 4px 3px 9px; border: 0; outline: 0; color: var(--text); background: transparent; font-size: 13px; line-height: 1.55; }
+    textarea::placeholder { color: var(--dim); }
+    .composer-row { display: flex; align-items: center; gap: 8px; }
+    .voice-hint { flex: 1; color: var(--dim); font-size: 10px; }
+    .send-btn { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); transition: .18s ease; }
+    .mic-btn svg,.send-btn svg { width: 17px; height: 17px; }
+    .send-btn { color: var(--bg); background: var(--accent); border-color: transparent; }
+    .send-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .send-btn:disabled { cursor: wait; opacity: .55; transform: none; }
+    .footnote { padding-top: 12px; color: var(--dim); text-align: center; font-size: 10px; }
+    .footnote a { color: var(--accent); text-decoration: none; }
+    @media(max-width:680px) {
+      .topbar { height: 60px; padding: 0 14px; gap: 9px; }
+      .back-link { width: 38px; height: 38px; justify-content: center; padding: 0; }
+      .back-label { display: none; }
+      .brand { gap: 6px; font-size: 12px; }
+      .brand-mark { width: 26px; height: 26px; }
+      .ready-pill { width: 10px; height: 10px; padding: 0; border: 0; }
+      .ready-pill span:last-child { display: none; }
+      .voice-select { width: 105px; max-width: 105px; padding: 0 4px; font-size: 10px; }
+      .theme-btn { width: 34px; height: 34px; }
+      .workspace { padding: 22px 14px calc(18px + env(safe-area-inset-bottom)); }
+      .intro { padding: 16px 4px 23px; }
+      .intro p { font-size: 13px; }
+      .voice-stage { min-height: 340px; padding: 25px 17px; border-radius: 20px; }
+      .voice-actions { flex-direction: column; margin-top: 22px; }
+      .talk-btn { width: min(280px,100%); }
+      .secondary-btn { justify-content: center; }
+    }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important; transition-duration:.01ms!important; } }
+  </style>
 </head>
 <body>
-<main class="assistant-shell">
-  <header class="top"><button class="back" onclick="goBack()" title="Back to LearnX" type="button"><i data-lucide="arrow-left"></i></button><div class="brand">LearnX <span style="color:var(--gold)">AI</span></div><div class="status">Assistant ready</div></header>
-  <section class="hero">
-    <div class="copy"><h1>Talk to your<br><span>learning partner.</span></h1><p>Ask questions, explore ideas, or get unstuck. Press the microphone and speak naturally, or type a message below.</p></div>
-    <div class="orb-wrap"><div class="orb" id="orb"><i data-lucide="sparkles"></i></div></div>
-  </section>
-  <section class="panel" id="assistantPanel"><div class="transcript empty" id="transcript">Your conversation will appear here.</div><div class="controls"><button class="mic" id="micButton" onclick="toggleListening()" title="Speak to LearnX AI" type="button"><i data-lucide="mic"></i></button><textarea class="text-input" id="messageInput" rows="1" placeholder="Ask LearnX AI anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}" oninput="resizeInput(this)"></textarea><button class="send" onclick="sendMessage()" title="Send message" type="button"><i data-lucide="send"></i></button></div><div class="hint" id="hint">Tap the mic to start a voice conversation.</div></section>
-  <footer class="footer">Powered by <a href="index.html">LearnX</a> AI</footer>
-</main>
-<script>
-const token = localStorage.getItem('lx_token');
-let recognition = null;
-let lastReply = '';
-const messages = [];
-const input = document.getElementById('messageInput');
-const transcript = document.getElementById('transcript');
-const micButton = document.getElementById('micButton');
-const orb = document.getElementById('orb');
-const hint = document.getElementById('hint');
-function goBack(){ window.location.href = 'index.html'; }
-function resizeInput(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
-function showTranscript(text, empty=false){ transcript.innerHTML=empty?text:text; transcript.classList.toggle('empty',empty); }
-function getNaturalVoice(text){
-  const voices=speechSynthesis.getVoices();
-  if(!voices.length)return null;
-  const hindi=/[\u0900-\u097F]/.test(text);
-  const preferred=hindi?['hi-IN','hi-US','en-IN']:['en-IN','en-US','en-GB'];
-  return voices.filter(v=>preferred.some(lang=>v.lang.toLowerCase().startsWith(lang.toLowerCase())))
-    .sort((a,b)=>((/google|microsoft|natural|neural/i.test(b.name)?1:0)-(/google|microsoft|natural|neural/i.test(a.name)?1:0)))[0]||voices[0];
-}
-function speak(text){
-  if(!('speechSynthesis' in window)){hint.textContent='Voice playback is not supported in this browser.';return;}
-  speechSynthesis.cancel();
-  const clean=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-  const utterance=new SpeechSynthesisUtterance(clean);
-  const voice=getNaturalVoice(clean); if(voice)utterance.voice=voice;
-  utterance.rate=.95; utterance.pitch=1; utterance.volume=1;
-  utterance.onstart=()=>{orb.classList.add('speaking');document.querySelector('.panel').classList.add('speaking');};
-  const finishSpeaking=()=>{orb.classList.remove('speaking');document.querySelector('.panel').classList.remove('speaking');};
-  utterance.onend=finishSpeaking; utterance.onerror=finishSpeaking;
-  speechSynthesis.speak(utterance);
-}
-if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
-function toggleListening(){
-  const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Recognition){hint.textContent='Voice input is not supported in this browser.';hint.classList.add('error');return;}
-  if(recognition){recognition.stop();return;}
-  recognition=new Recognition(); recognition.lang=navigator.language||'en-IN'; recognition.interimResults=true; recognition.continuous=false;
-  recognition.onstart=()=>{micButton.classList.add('active');orb.classList.add('listening');hint.textContent='Listening... speak now';};
-  recognition.onresult=e=>{input.value=Array.from(e.results).map(r=>r[0].transcript).join('');resizeInput(input);};
-  recognition.onerror=()=>{hint.textContent='Mic se awaaz nahi mili, dobara try karo';};
-  recognition.onend=()=>{recognition=null;micButton.classList.remove('active');orb.classList.remove('listening');if(input.value.trim())sendMessage();else hint.textContent='Tap the mic to start a voice conversation.';};
-  recognition.start();
-}
-async function sendMessage(){
-  const text=input.value.trim(); if(!text)return;
-  input.value='';resizeInput(input);messages.push({role:'user',content:text});showTranscript('Thinking...');hint.textContent='LearnX AI is preparing a reply...';
-  try{
-    const response=await fetch('/api/assistant',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},token?{'Authorization':'Bearer '+token}:{}),body:JSON.stringify({messages})});
-    const data=await response.json().catch(()=>({})); if(!response.ok)throw new Error(data.error||'AI connection failed');
-    lastReply=data.reply||data.message||data.content||''; if(!lastReply)throw new Error('No reply received');
-    messages.push({role:'assistant',content:lastReply});showTranscript(lastReply);hint.textContent='Reply ready. Tap the mic to continue speaking.';speak(lastReply);
-  }catch(error){messages.pop();showTranscript(error.message||'AI se connect nahi ho paaya',false);hint.classList.add('error');}
-}
-lucide.createIcons();
-</script>
+  <div class="assistant-app">
+    <header class="topbar">
+      <a class="back-link" href="/" aria-label="Back to LearnX"><i data-lucide="arrow-left"></i><span class="back-label">Back to LearnX</span></a>
+      <div class="brand"><span class="brand-mark"><i data-lucide="hexagon"></i></span>Learn<em>X</em> <span style="color:var(--muted);font-weight:500">AI</span></div>
+      <span class="top-spacer"></span>
+      <select class="voice-select" id="voiceSelect" aria-label="Assistant speaking voice" title="Assistant speaking voice">
+        <option value="auto">Auto voice</option>
+      </select>
+      <div class="ready-pill"><span class="ready-dot"></span><span id="statusText">Ready to help</span></div>
+      <button class="theme-btn" id="themeButton" type="button" aria-label="Toggle theme" title="Toggle theme"><i data-lucide="sun-moon"></i></button>
+    </header>
+    <main class="workspace">
+      <section class="intro">
+        <div class="eyebrow"><i data-lucide="audio-lines"></i> LearnX voice assistant</div>
+        <h1>Just say what<br><span>you want to learn.</span></h1>
+        <p>Talk through a question out loud. LearnX listens, answers naturally, and reads the reply back to you.</p>
+      </section>
+      <section class="voice-stage" id="voiceStage" data-state="idle" aria-label="Voice assistant controls">
+        <div class="voice-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <h2 class="voice-status" id="voiceStatus">Ready when you are</h2>
+        <p class="voice-guidance" id="voiceGuidance">Tap the button and ask your question. You can speak in Hindi or English.</p>
+        <div class="voice-caption" id="voiceCaption" hidden aria-live="polite"></div>
+        <div class="voice-actions">
+          <button class="talk-btn" id="micButton" type="button"><i data-lucide="mic"></i><span>Tap to speak</span></button>
+          <button class="secondary-btn" id="showTextButton" type="button"><i data-lucide="keyboard"></i>Type instead</button>
+        </div>
+      </section>
+      <form class="composer" id="composer" hidden>
+          <textarea id="messageInput" rows="1" placeholder="Ask LearnX AI anything…" aria-label="Your message"></textarea>
+          <div class="composer-row">
+            <div class="voice-hint">Enter to send · Shift + Enter for a new line</div>
+            <button class="secondary-btn" id="hideTextButton" type="button"><i data-lucide="mic"></i>Use voice</button>
+            <button class="send-btn" id="sendButton" type="submit" aria-label="Send message"><i data-lucide="arrow-up"></i></button>
+          </div>
+      </form>
+      <div class="footnote">LearnX AI can make mistakes. Check important information. <a href="/">Return to LearnX</a></div>
+    </main>
+  </div>
+  <script>
+    const root = document.documentElement;
+    const voiceStage = document.getElementById('voiceStage');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const voiceGuidance = document.getElementById('voiceGuidance');
+    const voiceCaption = document.getElementById('voiceCaption');
+    const input = document.getElementById('messageInput');
+    const micButton = document.getElementById('micButton');
+    const sendButton = document.getElementById('sendButton');
+    const statusText = document.getElementById('statusText');
+    const composer = document.getElementById('composer');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const storageKey = 'lx_assistant_messages';
+    let conversation = [];
+    let recognition = null;
+    let recognitionFailed = false;
+    let busy = false;
+    let speechQueue = [];
+    let speechGeneration = 0;
+    let availableVoices = [];
+    let queuedSpeechLanguage = 'en-IN';
+
+    const paletteColors = {
+      gold: ['#e2b880','226,184,128','#0d0e12','#111318','#171a20','#1b1e25','#a8865a','168,134,90'],
+      ember: ['#ff8a65','255,138,101','#060d0d','#0a1313','#101b1b','#152323','#c75b3a','199,91,58'],
+      aurora: ['#8e8bff','142,139,255','#0a0b14','#0e1020','#14172a','#1a1e33','#5a57e0','90,87,224'],
+      matcha: ['#7ddc8a','125,220,138','#08100b','#0c160f','#122017','#17291d','#2f8f43','47,143,67'],
+      rose: ['#ff6b9d','255,107,157','#120a0e','#180e13','#22131a','#2b1922','#d63c78','214,60,120'],
+      ocean: ['#4cc9f0','76,201,240','#06101a','#0a1623','#0f1f30','#142a3f','#1587b3','21,135,179'],
+      violet: ['#b388ff','179,136,255','#0f0a1a','#150e24','#1d1330','#251a3d','#7a43d6','122,67,214'],
+      crimson: ['#ff4d5a','255,77,90','#110707','#170a0a','#221010','#2c1515','#d02636','208,38,54'],
+      mono: ['#e8e8e8','232,232,232','#0b0b0b','#101010','#171717','#1e1e1e','#333333','51,51,51'],
+      lime: ['#c6f432','198,244,50','#0a0d06','#0f130a','#161c0e','#1d2512','#6b8f00','107,143,0']
+    };
+    function readSetting(key, fallback) {
+      try {
+        const value = localStorage.getItem('lx_' + key);
+        return value === null ? fallback : JSON.parse(value);
+      } catch (error) {
+        return fallback;
+      }
+    }
+    function applySavedTheme() {
+      let theme = readSetting('theme', 'dark');
+      if (theme === 'system') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      if (theme !== 'light' && theme !== 'dark') theme = 'dark';
+      const palette = paletteColors[readSetting('palette', 'gold')] || paletteColors.gold;
+      root.dataset.theme = theme;
+      const accent = theme === 'dark' ? palette[0] : palette[6];
+      const accentRgb = theme === 'dark' ? palette[1] : palette[7];
+      root.style.setProperty('--accent', accent);
+      root.style.setProperty('--accent-rgb', accentRgb);
+      root.style.setProperty('--accent-soft', `rgba(${accentRgb},.12)`);
+      root.style.setProperty('--bg', theme === 'dark' ? palette[2] : '#f7f5f0');
+      root.style.setProperty('--surface', theme === 'dark' ? palette[3] : '#fff');
+      root.style.setProperty('--surface-2', theme === 'dark' ? palette[5] : '#f0ede7');
+      root.style.setProperty('--surface-3', theme === 'dark' ? palette[4] : '#e9e5dc');
+      document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? palette[2] : '#f7f5f0';
+      const button = document.getElementById('themeButton');
+      button.innerHTML = `<i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}"></i>`;
+      button.title = `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`;
+      lucide.createIcons();
+    }
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+    }
+    function saveConversation() {
+      try { localStorage.setItem(storageKey, JSON.stringify(conversation.slice(-40))); }
+      catch (error) { console.warn('Assistant conversation could not be saved.', error); }
+    }
+    function renderConversation() {
+      const questionIndex = conversation.slice().reverse().findIndex(message => message.role === 'user');
+      const replyIndex = conversation.slice().reverse().findIndex(message => message.role === 'assistant');
+      const latestQuestionIndex = questionIndex < 0 ? -1 : conversation.length - questionIndex - 1;
+      const latestReplyIndex = replyIndex < 0 ? -1 : conversation.length - replyIndex - 1;
+      const latestQuestion = latestQuestionIndex >= 0 ? conversation[latestQuestionIndex] : null;
+      const latestReply = latestReplyIndex > latestQuestionIndex ? conversation[latestReplyIndex] : null;
+      if (!latestQuestion && !latestReply) {
+        voiceCaption.hidden = true;
+        voiceCaption.replaceChildren();
+        return;
+      }
+      voiceCaption.hidden = false;
+      voiceCaption.innerHTML = `${latestQuestion ? `<span class="caption-label">You said</span><div class="caption-text">${escapeHTML(latestQuestion.content)}</div>` : ''}${latestReply ? `<span class="caption-label" style="margin-top:14px">LearnX AI</span><div class="caption-text">${latestReply.content}</div><div class="message-tools"><button class="tool-btn" type="button" data-copy="${latestReplyIndex}"><i data-lucide="copy"></i>Copy</button><button class="tool-btn" type="button" data-speak="${latestReplyIndex}"><i data-lucide="volume-2"></i>Listen</button><button class="tool-btn" type="button" data-stop-speech><i data-lucide="square"></i>Stop</button></div>` : ''}`;
+      lucide.createIcons();
+    }
+    function setVoiceState(state, title, description) {
+      voiceStage.dataset.state = state;
+      voiceStatus.textContent = title;
+      voiceGuidance.textContent = description;
+      statusText.textContent = state === 'thinking' ? 'Thinking…'
+        : state === 'listening' ? 'Listening'
+          : state === 'speaking' ? 'Speaking'
+            : state === 'error' ? 'Needs attention' : 'Ready to help';
+      const active = state === 'listening';
+      micButton.classList.toggle('active', active);
+      micButton.innerHTML = `<i data-lucide="${active ? 'mic-off' : 'mic'}"></i><span>${active ? 'Stop listening' : 'Tap to speak'}</span>`;
+      lucide.createIcons();
+    }
+    function cleanSpeechText(html, omitCode = true) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      doc.querySelectorAll(omitCode ? 'pre, code, script, style' : 'script, style').forEach(element => element.remove());
+      doc.querySelectorAll('br, p, div, li, h1, h2, h3, h4, blockquote').forEach(element => {
+        element.insertAdjacentText('beforebegin', '\n');
+        element.insertAdjacentText('afterend', '\n');
+      });
+      return (doc.body.textContent || '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/[ \t]*\n[ \t]*/g, '\n')
+        .replace(/\n{2,}/g, '\n')
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim();
+    }
+    function detectSpeechLanguage(text) {
+      const hindiChars = (text.match(/[\u0900-\u097f]/g) || []).length;
+      if (hindiChars > 0) return 'hi-IN';
+      const words = (text.toLowerCase().match(/[a-z']+/g) || []);
+      const distinctiveHindiWords = new Set([
+        'aap','banao','bata','batao','bhai','chahiye','hain','hame','isme','jaisa',
+        'kaise','karo','karna','karlo','karta','karte','kyu','kyun','lagta','mujhe',
+        'nahin','nahi','raha','rahi','samaj','samajh','samja','samjha','samjhao',
+        'sakte','sakta','thoda','tum','tumhe','yaar','ye','yeh'
+      ]);
+      const hindiWords = new Set([
+        'aap','abhi','acha','accha','agar','aur','batao','bhi','chahiye','hai','hain','hoga',
+        'ho','hona','hoti','ka','kaise','kar','kara','kare','karen','karke','karo','karna',
+        'karne','karun','ke','ki','kya','kyu','kyun','lekin','liye','main','matlab','mein',
+        'mujhe','na','nahi','nahin','par','raha','rahe','rahi','samajh','samjha','samjhao',
+        'se','sakta','sakte','sakti','tha','the','thi','to','toh','tum','tumhe','unka','uska',
+        'wala','wali','ye','yeh'
+      ]);
+      const matches = words.filter(word => hindiWords.has(word)).length;
+      return words.some(word => distinctiveHindiWords.has(word)) || matches >= 2 ? 'hi-IN' : 'en-IN';
+    }
+    function refreshVoices() {
+      if (!('speechSynthesis' in window)) return;
+      availableVoices = speechSynthesis.getVoices();
+      const selected = voiceSelect.value || 'auto';
+      const preferred = detectSpeechLanguage(
+        conversation.slice(-4).map(message => message.content).join(' ')
+      );
+      const quality = voice => /natural|neural|online|premium/i.test(voice.name) ? ' · Natural' : '';
+      voiceSelect.innerHTML = '<option value="auto">Auto voice</option>' + availableVoices
+        .slice()
+        .sort((a, b) => {
+          const aPreferred = a.lang.toLowerCase().startsWith(preferred.toLowerCase());
+          const bPreferred = b.lang.toLowerCase().startsWith(preferred.toLowerCase());
+          if (aPreferred !== bPreferred) return aPreferred ? -1 : 1;
+          return Number(/natural|neural|online|premium/i.test(b.name)) - Number(/natural|neural|online|premium/i.test(a.name));
+        })
+        .map(voice => `<option value="${escapeHTML(voice.voiceURI)}">${escapeHTML(voice.name)} (${escapeHTML(voice.lang)})${quality(voice)}</option>`)
+        .join('');
+      if ([...voiceSelect.options].some(option => option.value === selected)) voiceSelect.value = selected;
+      else voiceSelect.value = 'auto';
+      voiceSelect.title = availableVoices.length
+        ? 'Choose an installed voice. Natural/online voices usually sound more conversational.'
+        : 'No system voices are available yet. Check your device speech settings.';
+    }
+    function selectSpeechVoice(language) {
+      const chosen = voiceSelect.value;
+      if (chosen !== 'auto') return availableVoices.find(voice => voice.voiceURI === chosen) || null;
+      const matches = availableVoices.filter(voice => voice.lang.toLowerCase().startsWith(language.toLowerCase()));
+      const candidates = matches.length ? matches : language === 'hi-IN'
+        ? []
+        : availableVoices.filter(voice => voice.lang.toLowerCase().startsWith('en-'));
+      return candidates.sort((a, b) => {
+        const aNatural = /natural|neural|online|premium/i.test(a.name);
+        const bNatural = /natural|neural|online|premium/i.test(b.name);
+        if (aNatural !== bNatural) return aNatural ? -1 : 1;
+        const aLocal = a.localService;
+        const bLocal = b.localService;
+        return Number(aLocal) - Number(bLocal);
+      })[0] || null;
+    }
+    function splitSpeech(text) {
+      return text.split(/\n+/).map(part => part.trim()).filter(Boolean)
+        .flatMap(part => part.match(/[^.!?।]+[.!?।]+|[^.!?।]+$/g) || [])
+        .map(part => part.trim()).filter(Boolean);
+    }
+    function stopSpeech() {
+      speechGeneration++;
+      speechQueue = [];
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+    }
+    function speakNext(generation) {
+      if (generation !== speechGeneration || !speechQueue.length) return;
+      const part = speechQueue.shift();
+      const utterance = new SpeechSynthesisUtterance(part);
+      const language = queuedSpeechLanguage;
+      utterance.lang = language;
+      const voice = selectSpeechVoice(language);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+      utterance.rate = language === 'hi-IN' ? 0.91 : 0.94;
+      utterance.pitch = 1.02;
+      utterance.volume = 1;
+      utterance.onend = () => {
+        if (generation !== speechGeneration) return;
+        if (speechQueue.length) setTimeout(() => speakNext(generation), 180);
+        else setVoiceState('idle', 'That was the answer', 'Tap the microphone whenever you want to ask another question.');
+      };
+      utterance.onerror = event => {
+        if (event.error !== 'canceled' && generation === speechGeneration) {
+          speechQueue = [];
+          setVoiceState('error', 'Audio stopped', 'Use Listen below the answer to try again.');
+        }
+      };
+      speechSynthesis.speak(utterance);
+    }
+    function speak(text) {
+      if (!('speechSynthesis' in window)) {
+        setVoiceState('error', 'Audio is not available', 'This browser does not support voice playback.');
+        return;
+      }
+      stopSpeech();
+      const plainText = cleanSpeechText(text);
+      speechQueue = splitSpeech(plainText);
+      if (!speechQueue.length) return;
+      const latestQuestion = conversation.slice().reverse().find(message => message.role === 'user');
+      const language = detectSpeechLanguage(latestQuestion ? latestQuestion.content : plainText);
+      queuedSpeechLanguage = language;
+      const voice = selectSpeechVoice(language);
+      if (!voice) {
+        setVoiceState('error', language === 'hi-IN' ? 'Hindi voice not found' : 'Voice not available',
+          language === 'hi-IN'
+            ? 'Install a Hindi speech voice in your device settings, then choose it from the voice menu.'
+            : 'No system voice is available for audio playback.');
+        if (language === 'hi-IN') {
+          stopSpeech();
+          return;
+        }
+      } else {
+        setVoiceState('speaking', 'LearnX is speaking', `Reading your answer in ${voice.name}. Tap the microphone to interrupt.`);
+      }
+      speakNext(speechGeneration);
+    }
+    async function sendMessage(text) {
+      const content = (text === undefined ? input.value : text).trim();
+      if (!content || busy) return;
+      conversation.push({ role: 'user', content });
+      input.value = '';
+      input.style.height = 'auto';
+      busy = true;
+      sendButton.disabled = true;
+      setVoiceState('thinking', 'Thinking it through', 'LearnX is preparing a clear answer for you.');
+      renderConversation();
+      try {
+        const token = localStorage.getItem('lx_token');
+        const response = await fetch('/api/assistant', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+          body: JSON.stringify({ messages: conversation.slice(-15) })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Please sign in to LearnX first, then come back to the assistant.');
+          throw new Error(data.error || 'AI connection failed. Please try again.');
+        }
+        const reply = data.reply || data.message || data.content;
+        if (!reply) throw new Error('No reply received. Please try again.');
+        conversation.push({ role: 'assistant', content: reply });
+        saveConversation();
+        setVoiceState('idle', 'Here’s what I found', 'Listen to the answer, or tap the microphone to keep talking.');
+        speak(reply);
+      } catch (error) {
+        conversation.pop();
+        setVoiceState('error', 'I could not get an answer', error.message || 'Could not connect to LearnX AI.');
+      } finally {
+        busy = false;
+        sendButton.disabled = false;
+        renderConversation();
+        if (!composer.hidden) input.focus();
+      }
+    }
+    document.getElementById('composer').addEventListener('submit', event => {
+      event.preventDefault();
+      sendMessage();
+    });
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+    });
+    voiceCaption.addEventListener('click', async event => {
+      const copy = event.target.closest('[data-copy]');
+      const listen = event.target.closest('[data-speak]');
+      const stop = event.target.closest('[data-stop-speech]');
+      if (copy) {
+        const message = conversation[Number(copy.dataset.copy)];
+        if (message) {
+          try { await navigator.clipboard.writeText(cleanSpeechText(message.content, false)); setVoiceState('idle', 'Answer copied', 'You can paste the answer wherever you need it.'); }
+          catch (error) { setVoiceState('error', 'Could not copy', 'Clipboard access was blocked by your browser.'); }
+        }
+      }
+      if (listen) {
+        const message = conversation[Number(listen.dataset.speak)];
+        if (message) speak(message.content);
+      }
+      if (stop) {
+        stopSpeech();
+        setVoiceState('idle', 'Audio paused', 'Tap Listen to replay the answer or use the microphone to continue.');
+      }
+    });
+    micButton.addEventListener('click', () => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setVoiceState('error', 'Microphone input is not supported', 'Use “Type instead” to ask your question in this browser.');
+        return;
+      }
+      if (recognition) {
+        recognition.stop();
+        return;
+      }
+      if (busy) return;
+      stopSpeech();
+      recognition = new SpeechRecognition();
+      recognitionFailed = false;
+      recognition.lang = (navigator.language || '').toLowerCase().startsWith('hi') ? 'hi-IN' : 'en-IN';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        setVoiceState('listening', 'I’m listening', 'Speak naturally. Tap “Stop listening” when you are done.');
+      };
+      recognition.onresult = event => {
+        input.value = Array.from(event.results).map(result => result[0].transcript).join('');
+        input.dispatchEvent(new Event('input'));
+      };
+      recognition.onerror = () => {
+        recognitionFailed = true;
+        input.value = '';
+        setVoiceState('error', 'I could not hear that', 'Check microphone permission, then try again or type your question.');
+      };
+      recognition.onend = () => {
+        recognition = null;
+        if (recognitionFailed) return;
+        if (input.value.trim()) sendMessage();
+        else setVoiceState('idle', 'Ready when you are', 'Tap the button and ask your question. You can speak in Hindi or English.');
+      };
+      try {
+        recognition.start();
+      } catch (error) {
+        recognition = null;
+        setVoiceState('error', 'Microphone could not start', 'Check microphone permission, then try again.');
+      }
+    });
+    document.getElementById('showTextButton').addEventListener('click', () => {
+      composer.hidden = false;
+      input.focus();
+    });
+    document.getElementById('hideTextButton').addEventListener('click', () => {
+      composer.hidden = true;
+      input.value = '';
+      input.style.height = 'auto';
+    });
+    document.getElementById('themeButton').addEventListener('click', () => {
+      const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('lx_theme', JSON.stringify(next));
+      applySavedTheme();
+    });
+    voiceSelect.addEventListener('change', () => {
+      try { localStorage.setItem('lx_assistant_voice', voiceSelect.value); }
+      catch (error) { console.warn('Assistant voice preference could not be saved.', error); }
+    });
+    if ('speechSynthesis' in window) {
+      speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+      refreshVoices();
+    }
+    window.addEventListener('storage', event => {
+      if (event.key === 'lx_theme' || event.key === 'lx_palette') applySavedTheme();
+    });
+    window.addEventListener('pagehide', () => {
+      stopSpeech();
+      if (recognition) recognition.stop();
+    });
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      if (Array.isArray(saved)) conversation = saved.filter(message =>
+        message && ['user','assistant'].includes(message.role) && typeof message.content === 'string'
+      ).slice(-40);
+    } catch (error) {
+      console.warn('Saved assistant conversation could not be loaded.', error);
+    }
+    applySavedTheme();
+    renderConversation();
+    try {
+      const savedVoice = localStorage.getItem('lx_assistant_voice');
+      if (savedVoice) voiceSelect.value = savedVoice;
+    } catch (error) {
+      console.warn('Assistant voice preference could not be loaded.', error);
+    }
+    if (!localStorage.getItem('lx_token')) {
+      setVoiceState('error', 'Sign in to LearnX first', 'Return to LearnX and sign in before using the voice assistant.');
+    } else if (conversation.length) {
+      setVoiceState('idle', 'Welcome back', 'Your last answer is here. Tap the microphone when you are ready to continue.');
+    }
+    lucide.createIcons();
+  </script>
 </body>
 </html>
