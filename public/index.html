@@ -6416,7 +6416,7 @@ function toggleAiMic() {
   aiRecognition.onend = () => { aiRecognition = null; if (btn) { btn.classList.remove('listening'); btn.innerHTML = '<i data-lucide="mic"></i>'; lucide.createIcons(); } };
   aiRecognition.start();
 }
-function openAssistant() { window.location.href = 'assistant.html'; }
+function openAssistant() { window.location.href = '/assistant.html'; }
 /* ===== AI: attachments ===== */
 let _pendingFiles = [];
 const _TEXT_EXT = /\.(txt|md|csv|json|js|ts|jsx|tsx|py|java|c|cpp|h|cs|go|rb|php|html|css|xml|yml|yaml|sql|log|sh)$/i;
@@ -6825,4 +6825,3 @@ Object.assign(window, {
 <div class="drive-banner" id="driveBanner"><b id="driveBannerTitle">Apna data apni Google Drive me save karein?</b><p id="driveBannerText"></p><div class="row"><button class="btn btn-secondary btn-sm" onclick="driveBannerLater()" type="button">Abhi nahi</button><button class="btn btn-primary btn-sm" id="driveBannerBtn" onclick="driveEnable()" type="button">Allow Drive</button></div></div>
 </body>
 </html>
-
