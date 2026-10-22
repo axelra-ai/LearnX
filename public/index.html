@@ -2947,7 +2947,7 @@ function originVideoCardHTML(video, owner = false) {
   const likes = Number(video.likeCount || 0);
   const comments = Number(video.commentCount || 0);
   return `<article class="origin-video" data-video-id="${esc(video.id)}" aria-label="${originAttr(video.title)}">
-    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onload="originFitThumb(this)" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onload="originFitThumb(this)" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); openOriginVideoDetail('${esc(video.id)}')" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
     <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="event.stopPropagation(); openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span>${likes || comments ? `<span><i data-lucide="heart" style="width:12px;height:12px;display:inline;vertical-align:-2px"></i> ${likes}</span><span><i data-lucide="message-circle" style="width:12px;height:12px;display:inline;vertical-align:-2px"></i> ${comments}</span>` : ''}</div>
@@ -4698,21 +4698,70 @@ async function openOriginVideoDetail(videoId) {
     </div>`;
   lucide.createIcons();
   window.scrollTo({ top: 0, behavior: 'instant' });
-  // Mount clean video player (no native extra control chrome preferred; allow minimal for seeking)
+  // Clean player: NO native control bar (volume/CC/1x/settings). Full video visible (object-fit contain + dynamic aspect).
   const container = document.getElementById('originDetailPlayer');
+  container.style.aspectRatio = '16 / 9';
+  container.style.background = '#000';
   const player = document.createElement('video');
-  player.className = 'origin-inline-video';
-  player.controls = true; // detail page: controls allowed for scrubbing; still clean
+  player.className = 'origin-detail-video';
+  player.controls = false;
   player.preload = 'auto';
   player.setAttribute('playsinline', '');
   player.setAttribute('webkit-playsinline', '');
-  player.setAttribute('controlslist', 'nodownload');
+  player.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback');
+  player.setAttribute('disablepictureinpicture', '');
   player.poster = thumbUrl;
-  player.style.position = 'absolute'; player.style.inset = '0'; player.style.width = '100%'; player.style.height = '100%'; player.style.objectFit = 'contain'; player.style.background = '#000';
+  player.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block';
+  const spin = document.createElement('div');
+  spin.className = 'lx-spin';
+  spin.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2';
+  const overlay = document.createElement('button');
+  overlay.type = 'button';
+  overlay.className = 'origin-play origin-detail-overlay';
+  overlay.setAttribute('aria-label', 'Play/Pause');
+  overlay.innerHTML = '<i data-lucide="play"></i>';
+  overlay.style.cssText = 'position:absolute;inset:0;margin:auto;z-index:3;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.72);color:#fff;border:0;cursor:pointer';
+  const syncOverlay = () => {
+    if (player._lxDead) return;
+    const paused = player.paused || player.ended;
+    overlay.style.display = paused ? 'grid' : 'none';
+    overlay.innerHTML = paused ? '<i data-lucide="play"></i>' : '<i data-lucide="pause"></i>';
+    if (window.lucide) lucide.createIcons({ nodes: [overlay] });
+  };
+  const togglePlay = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (player._lxDead) return;
+    if (player.paused) player.play().catch(() => {});
+    else player.pause();
+  };
+  player.addEventListener('click', togglePlay);
+  overlay.addEventListener('click', togglePlay);
+  player.addEventListener('play', syncOverlay);
+  player.addEventListener('playing', () => { spin.remove(); syncOverlay(); });
+  player.addEventListener('pause', syncOverlay);
+  player.addEventListener('ended', syncOverlay);
+  player.addEventListener('waiting', () => {
+    if (!spin.isConnected && !player._lxDead) container.appendChild(spin);
+  });
+  player.addEventListener('canplay', () => { spin.remove(); syncOverlay(); });
+  // Video ke asli ratio se container set — puri video dikhe, crop na ho
+  player.addEventListener('loadedmetadata', () => {
+    if (player.videoWidth && player.videoHeight) {
+      const r = player.videoWidth / player.videoHeight;
+      container.style.aspectRatio = Math.min(2.4, Math.max(0.55, r)).toFixed(4);
+    }
+  });
+  player._lxWant = true;
+  player._lxBlocked = () => spin.remove();
   container.innerHTML = '';
   container.appendChild(player);
+  container.appendChild(spin);
+  container.appendChild(overlay);
+  if (window.lucide) lucide.createIcons({ nodes: [overlay] });
   lxVideoLoad(player, video.driveFileId, () => {
-    container.innerHTML = '';
+    // Stream fail → Drive preview iframe (Drive ka apna UI aayega, lekin full frame)
+    if (!container.isConnected) return;
+    player.remove(); spin.remove(); overlay.remove();
     const frame = document.createElement('iframe');
     frame.src = 'https://drive.google.com/file/d/' + encodeURIComponent(video.driveFileId) + '/preview';
     frame.title = video.title || 'Origin Play';
@@ -4721,6 +4770,8 @@ async function openOriginVideoDetail(videoId) {
     frame.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;background:#000';
     container.appendChild(frame);
   });
+  // Auto-start play when detail opens
+  setTimeout(() => { try { player.play().catch(() => {}); } catch (e) {} }, 200);
   // Count view
   const key = 'lx_origin_view_' + videoId;
   try {
