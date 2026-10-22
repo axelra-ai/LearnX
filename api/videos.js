@@ -1,5 +1,6 @@
 import { sql } from '../lib/db.js';
 import { getUserFromReq } from '../lib/auth.js';
+import { streamDriveFile, readActivity, toggleLike, addComment, deleteComment } from '../lib/driveStore.js';
 
 // Push optional hai: file/package/keys na hon to bhi videos aur chats chalte rehne chahiye.
 async function loadPush() {
@@ -729,6 +730,74 @@ export default async function handler(req, res) {
       }
       await sql`delete from video_messages where (sender_id = ${user.uid} and recipient_id = ${otherId}) or (sender_id = ${otherId} and recipient_id = ${user.uid})`;
       return res.status(200).json({ ok: true });
+    }
+
+    // ===== Origin Play: video stream (Range support) =====
+    // Player pehle isi endpoint se video chalata hai. Drive iframe ab use nahi hota.
+    if ((req.method === 'GET' || req.method === 'HEAD') && action === 'stream') {
+      return await streamDriveFile(req, res, String(req.query.id || ''));
+    }
+
+    // ===== Origin Play: likes + comments (video ke owner ke Google Drive me save) =====
+    if (action === 'activity' || action === 'activity-like' || action === 'activity-comment' || action === 'activity-comment-delete') {
+      const videoId = String((req.method === 'GET' || req.method === 'DELETE' ? req.query.videoId : req.body && req.body.videoId) || '');
+      if (!UUID_RE.test(videoId)) return res.status(400).json({ error: 'Video valid nahi hai.' });
+      const owner = await sql`select user_id as "ownerId", title from videos where id = ${videoId} limit 1`;
+      if (!owner.length) return res.status(404).json({ error: 'Video nahi mila.' });
+      const ownerId = owner[0].ownerId;
+      const NO_DRIVE = 'Is video ke creator ka Google Drive connected nahi hai, isliye like/comment abhi save nahi ho sakta.';
+      try {
+        if (req.method === 'GET' && action === 'activity') {
+          try {
+            const data = await readActivity(ownerId, videoId, user ? user.uid : null);
+            return res.status(200).json(Object.assign({ ownerId, driveReady: true }, data));
+          } catch (err) {
+            if (err && err.code === 'NO_DRIVE') return res.status(200).json({ ownerId, driveReady: false, likeCount: 0, likedByMe: false, comments: [], commentCount: 0 });
+            throw err;
+          }
+        }
+
+        if (req.method === 'POST' && action === 'activity-like') {
+          if (!requireUser(user, res)) return;
+          const result = await toggleLike(ownerId, videoId, user.uid);
+          return res.status(200).json(result);
+        }
+
+        if (req.method === 'POST' && action === 'activity-comment') {
+          if (!requireUser(user, res)) return;
+          const body = String((req.body && req.body.body) || '').trim();
+          if (!body || body.length > 500) return res.status(400).json({ error: 'Comment 1 se 500 akshar ka hona chahiye.' });
+          // Simple spam rok (server instance ke hisaab se): 30 second me max 6 comments
+          global.__lxCommentHits = global.__lxCommentHits || new Map();
+          const now = Date.now();
+          const hits = (global.__lxCommentHits.get(user.uid) || []).filter(t => now - t < 30000);
+          if (hits.length >= 6) return res.status(429).json({ error: 'Thoda ruk kar comment karein.' });
+          hits.push(now); global.__lxCommentHits.set(user.uid, hits);
+          const me = await sql`select name, avatar_url as "avatarUrl" from users where id = ${user.uid} limit 1`;
+          const comment = await addComment(ownerId, videoId, { uid: user.uid, name: me[0] ? me[0].name : '', avatarUrl: me[0] ? me[0].avatarUrl : null }, body);
+          try {
+            if (ownerId !== user.uid) {
+              const push = await loadPush();
+              if (push) await push.sendPushToUser(ownerId, {
+                type: 'comment', title: (comment.name || 'Kisi ne') + ' ne comment kiya', body: body.slice(0, 140),
+                senderId: user.uid, url: '/', ts: Date.now(),
+              });
+            }
+          } catch (pushErr) { console.warn('Comment push failed:', pushErr && pushErr.message); }
+          return res.status(201).json({ comment });
+        }
+
+        if (req.method === 'DELETE' && action === 'activity-comment-delete') {
+          if (!requireUser(user, res)) return;
+          const result = await deleteComment(ownerId, videoId, String(req.query.id || ''), user.uid);
+          if (!result.ok) return res.status(result.status || 400).json({ error: result.status === 403 ? 'Aap ye comment delete nahi kar sakte.' : 'Comment nahi mila.' });
+          return res.status(200).json({ ok: true });
+        }
+      } catch (err) {
+        if (err && err.code === 'NO_DRIVE') return res.status(503).json({ error: NO_DRIVE });
+        throw err;
+      }
+      return res.status(405).json({ error: 'Method ya action valid nahi hai.' });
     }
 
     // ===== Reels: like / comments =====
