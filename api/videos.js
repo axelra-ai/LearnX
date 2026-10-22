@@ -1,11 +1,16 @@
 import { sql } from '../lib/db.js';
 import { getUserFromReq } from '../lib/auth.js';
-import { streamDriveFile, readActivity, toggleLike, addComment, deleteComment } from '../lib/driveStore.js';
 
 // Push optional hai: file/package/keys na hon to bhi videos aur chats chalte rehne chahiye.
 async function loadPush() {
   try { return await import('../lib/push.js'); }
   catch (err) { console.error('push.js load nahi hui:', err && err.message); return null; }
+}
+
+// Drive stream / likes-comments optional hain: lib/driveStore.js na mile ya load na ho to feed, chat, reels sab chalte rehne chahiye.
+async function loadDriveStore() {
+  try { return await import('../lib/driveStore.js'); }
+  catch (err) { console.error('driveStore.js load nahi hui:', err && err.message); return null; }
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -735,13 +740,17 @@ export default async function handler(req, res) {
     // ===== Origin Play: video stream (Range support) =====
     // Player pehle isi endpoint se video chalata hai. Drive iframe ab use nahi hota.
     if ((req.method === 'GET' || req.method === 'HEAD') && action === 'stream') {
-      return await streamDriveFile(req, res, String(req.query.id || ''));
+      const store = await loadDriveStore();
+      if (!store) return res.status(503).end(); // player automatically agle source par chala jata hai
+      return await store.streamDriveFile(req, res, String(req.query.id || ''));
     }
 
     // ===== Origin Play: likes + comments (video ke owner ke Google Drive me save) =====
     if (action === 'activity' || action === 'activity-like' || action === 'activity-comment' || action === 'activity-comment-delete') {
       const videoId = String((req.method === 'GET' || req.method === 'DELETE' ? req.query.videoId : req.body && req.body.videoId) || '');
       if (!UUID_RE.test(videoId)) return res.status(400).json({ error: 'Video valid nahi hai.' });
+      const store = await loadDriveStore();
+      if (!store) return res.status(503).json({ error: 'Server update adhura hai: lib/driveStore.js GitHub me upload karke redeploy karein.' });
       const owner = await sql`select user_id as "ownerId", title from videos where id = ${videoId} limit 1`;
       if (!owner.length) return res.status(404).json({ error: 'Video nahi mila.' });
       const ownerId = owner[0].ownerId;
@@ -749,7 +758,7 @@ export default async function handler(req, res) {
       try {
         if (req.method === 'GET' && action === 'activity') {
           try {
-            const data = await readActivity(ownerId, videoId, user ? user.uid : null);
+            const data = await store.readActivity(ownerId, videoId, user ? user.uid : null);
             return res.status(200).json(Object.assign({ ownerId, driveReady: true }, data));
           } catch (err) {
             if (err && err.code === 'NO_DRIVE') return res.status(200).json({ ownerId, driveReady: false, likeCount: 0, likedByMe: false, comments: [], commentCount: 0 });
@@ -759,7 +768,7 @@ export default async function handler(req, res) {
 
         if (req.method === 'POST' && action === 'activity-like') {
           if (!requireUser(user, res)) return;
-          const result = await toggleLike(ownerId, videoId, user.uid);
+          const result = await store.toggleLike(ownerId, videoId, user.uid);
           return res.status(200).json(result);
         }
 
@@ -774,7 +783,7 @@ export default async function handler(req, res) {
           if (hits.length >= 6) return res.status(429).json({ error: 'Thoda ruk kar comment karein.' });
           hits.push(now); global.__lxCommentHits.set(user.uid, hits);
           const me = await sql`select name, avatar_url as "avatarUrl" from users where id = ${user.uid} limit 1`;
-          const comment = await addComment(ownerId, videoId, { uid: user.uid, name: me[0] ? me[0].name : '', avatarUrl: me[0] ? me[0].avatarUrl : null }, body);
+          const comment = await store.addComment(ownerId, videoId, { uid: user.uid, name: me[0] ? me[0].name : '', avatarUrl: me[0] ? me[0].avatarUrl : null }, body);
           try {
             if (ownerId !== user.uid) {
               const push = await loadPush();
@@ -789,7 +798,7 @@ export default async function handler(req, res) {
 
         if (req.method === 'DELETE' && action === 'activity-comment-delete') {
           if (!requireUser(user, res)) return;
-          const result = await deleteComment(ownerId, videoId, String(req.query.id || ''), user.uid);
+          const result = await store.deleteComment(ownerId, videoId, String(req.query.id || ''), user.uid);
           if (!result.ok) return res.status(result.status || 400).json({ error: result.status === 403 ? 'Aap ye comment delete nahi kar sakte.' : 'Comment nahi mila.' });
           return res.status(200).json({ ok: true });
         }
