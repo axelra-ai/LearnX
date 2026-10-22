@@ -1711,6 +1711,32 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
   html body.on-ai-page #page-ai .ai-fullpage{height:100vh!important;height:100dvh!important;max-height:none!important;min-height:0!important}
   #page-ai .ai-hd-menu{display:grid!important}
 }
+
+/* ===== Origin Play watch page (lesson jaisa layout) ===== */
+.ow-wrap{max-width:900px;margin:0 auto}
+.ow-video{margin-bottom:16px;transition:aspect-ratio .2s}
+.ow-fail{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;background:rgba(0,0,0,.78);color:#fff}
+.ow-fail svg{width:30px;height:30px;opacity:.85}
+.ow-fail p{margin:0;font-size:14px}
+.ow-channel{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.ow-channel .origin-avatar{width:38px;height:38px;flex:0 0 38px;font-size:15px}
+.ow-channel b{font-size:14px}
+.lesson-panel > p.ow-desc{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:18px}
+.ow-like.on{color:var(--accent);border-color:var(--accent)}
+.ow-like.on svg{fill:currentColor}
+.ow-comments{margin-top:22px}
+.ow-comment-form{display:flex;gap:8px;margin:4px 0 8px}
+.ow-comment-form input{flex:1;min-width:0;padding:11px 14px;border:1px solid var(--border-2);border-radius:100px;background:var(--surface-2);color:var(--text);font:inherit}
+.ow-comment-form input:disabled{opacity:.55}
+.ow-comment{display:flex;gap:10px;padding:12px 0;border-top:1px solid var(--border)}
+.ow-comment .origin-avatar{width:34px;height:34px;flex:0 0 34px;font-size:13px}
+.ow-comment-body{flex:1;min-width:0}
+.ow-comment-body b{font-size:13px}
+.ow-comment-body small{color:var(--text-dimmer);margin-left:6px;font-size:11.5px}
+.ow-comment-body p{margin:2px 0 0;font-size:14px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.ow-comment-del{background:none;border:0;color:var(--text-dimmer);cursor:pointer;padding:4px;align-self:flex-start}
+.ow-comment-del svg{width:16px;height:16px}
+.ow-note{font-size:13px;color:var(--text-dim);line-height:1.6;margin:6px 0}
 </style>
 <link rel="preconnect" href="https://drive.usercontent.google.com">
 <link rel="preconnect" href="https://drive.google.com">
@@ -2181,6 +2207,7 @@ body.reels-surface .fab,body.reels-surface .origin-upload-fab{display:none!impor
         <div class="page" id="page-courseLevels"></div>
         <div class="page" id="page-courseDetail"></div>
         <div class="page" id="page-lesson"></div>
+        <div class="page" id="page-originWatch"></div>
         <div class="page" id="page-admin"></div>
         <div class="page" id="page-quizTake"></div>
 
@@ -2945,8 +2972,8 @@ function originVideoCardHTML(video, owner = false) {
   const driveId = encodeURIComponent(thumbId || video.driveFileId || '');
   const thumbUrl = thumbId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w640` : `https://drive.google.com/thumbnail?id=${encodeURIComponent(video.driveFileId)}&sz=w640`;
   return `<article class="origin-video" aria-label="${originAttr(video.title)}">
-    <div class="origin-thumb">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onload="originFitThumb(this)" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); originWatchVideo('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
-    <div class="origin-video-body"><div class="origin-video-title">${esc(video.title)}</div>
+    <div class="origin-thumb" onclick="openOriginWatch('${esc(video.id)}', this)" style="cursor:pointer">${video.kind === 'reel' ? '<span class="origin-reel-badge">REEL</span>' : ''}<img src="${thumbUrl}" alt="" loading="lazy" onload="originFitThumb(this)" onerror="this.style.display='none'" draggable="false"><button class="origin-play" onclick="event.preventDefault(); event.stopPropagation(); openOriginWatch('${esc(video.id)}', this)" aria-label="${originAttr('Play ' + video.title)}" type="button"><i data-lucide="play"></i></button></div>
+    <div class="origin-video-body"><div class="origin-video-title" onclick="openOriginWatch('${esc(video.id)}')" style="cursor:pointer">${esc(video.title)}</div>
       ${video.description ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px">${esc(video.description)}</p>` : ''}
       <div class="origin-meta"><div class="origin-channel-row">${originAvatarHTML({ name: video.channelName || (State.user && State.user.name) || 'Creator', avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button">${esc(video.channelName || (State.user && State.user.name) || 'Your channel')}</button></div><span>${Number(video.viewCount || 0).toLocaleString()} views</span></div>
       ${owner ? `<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-danger btn-sm" onclick="deleteOriginVideo('${esc(video.id)}')" type="button"><i data-lucide="trash-2"></i>Delete</button></div>` : ''}
@@ -4562,6 +4589,182 @@ function originWatchVideo(videoId, btn) {
     }
   } catch (e) {}
 }
+/* ===== Origin Play: watch page (lesson jaisa layout) ===== */
+// Video par click -> ye page khulta hai. Player sirf native <video> hai (Drive iframe / extra buttons nahi).
+// Like aur comments video ke owner ke Google Drive me save hote hain (server /api/videos?action=activity*).
+const OW = { videoId: null, ownerId: null, liked: false, likeCount: 0, comments: [], driveReady: true, likeBusy: false, sending: false };
+function owTimeAgo(iso) {
+  const t = new Date(iso).getTime(); if (!t) return '';
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return 'abhi'; if (s < 3600) return Math.floor(s / 60) + ' min'; if (s < 86400) return Math.floor(s / 3600) + ' hr';
+  if (s < 2592000) return Math.floor(s / 86400) + ' din'; return new Date(t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function originWatchStop() {
+  const page = document.getElementById('page-originWatch'); if (!page) return;
+  page.querySelectorAll('video').forEach(lxVideoDestroy);
+  if (page.innerHTML) page.innerHTML = '';
+  OW.videoId = null;
+}
+function originWatchBack() {
+  const ret = Origin.watchReturn && Origin.watchReturn !== 'originWatch' ? Origin.watchReturn : 'origin';
+  nav(ret);
+}
+function originWatchHTML(video) {
+  const name = video.channelName || 'Creator';
+  const date = video.createdAt ? new Date(video.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  return `<button class="btn btn-ghost btn-sm" onclick="originWatchBack()" style="margin-bottom:20px" type="button"><i data-lucide="arrow-left"></i>Back</button>
+  <div class="ow-wrap">
+    <div class="video-container ow-video" id="owVideoBox"></div>
+    <div class="lesson-panel">
+      <div class="lesson-panel-top"><div class="lesson-panel-label">Origin Play</div></div>
+      <h2>${esc(video.title || 'Video')}</h2>
+      <div class="lesson-panel-meta"><span><i data-lucide="eye"></i><span id="owViews">${Number(video.viewCount || 0).toLocaleString()}</span>&nbsp;views</span>${date ? `<span><i data-lucide="calendar"></i>${esc(date)}</span>` : ''}</div>
+      <div class="ow-channel">${originAvatarHTML({ name, avatarUrl: video.avatarUrl || '' })}<button class="origin-channel-link" onclick="openOriginChannel('${esc(video.channelId)}')" type="button"><b>${esc(name)}</b></button></div>
+      ${video.description ? `<p class="ow-desc">${esc(video.description)}</p>` : ''}
+      <div class="lesson-actions">
+        <button class="btn btn-secondary btn-sm ow-like" id="owLike" onclick="originWatchLike()" type="button"></button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('owCommentInput').focus()" type="button"><i data-lucide="message-circle"></i><span id="owCommentTotal">0</span></button>
+      </div>
+    </div>
+    <div class="side-panel ow-comments">
+      <h3><span><i data-lucide="messages-square"></i><span id="owCommentsTitle">Comments</span></span></h3>
+      <div class="ow-comment-form"><input id="owCommentInput" maxlength="500" placeholder="Comment likhein..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();originWatchComment();}"><button class="btn btn-primary btn-sm" id="owCommentSend" onclick="originWatchComment()" type="button"><i data-lucide="send"></i></button></div>
+      <div id="owCommentList"><p class="ow-note">Comments load ho rahe hain...</p></div>
+    </div>
+  </div>`;
+}
+function originWatchPlay(video) {
+  const box = document.getElementById('owVideoBox'); if (!box) return;
+  box.querySelectorAll('video').forEach(lxVideoDestroy);
+  box.innerHTML = '';
+  const posterId = video.thumbnailFileId || video.driveFileId;
+  const player = document.createElement('video');
+  player.className = 'origin-inline-video'; player.controls = true; player.preload = 'auto';
+  player.setAttribute('playsinline', ''); player.setAttribute('webkit-playsinline', '');
+  player.setAttribute('controlslist', 'nodownload noremoteplayback'); player.disablePictureInPicture = true;
+  if (posterId) player.poster = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(posterId) + '&sz=w640';
+  player._lxWant = true;
+  player.addEventListener('loadedmetadata', () => { if (player.videoWidth && player.videoHeight) box.style.aspectRatio = Math.min(2.2, Math.max(0.75, player.videoWidth / player.videoHeight)).toFixed(4); });
+  player.addEventListener('timeupdate', () => { if (currentPage !== 'originWatch') originWatchStop(); }); // page badal jaye to video band
+  const spin = document.createElement('div'); spin.className = 'lx-spin';
+  player._lxBlocked = () => spin.remove();
+  player.addEventListener('playing', () => spin.remove());
+  player.addEventListener('canplay', () => { if (player.paused) spin.remove(); });
+  player.addEventListener('waiting', () => { if (!spin.isConnected && !player._lxDead) box.appendChild(spin); });
+  box.appendChild(player); box.appendChild(spin);
+  const vid = video.id;
+  lxVideoLoad(player, video.driveFileId, () => {
+    // Saare direct sources fail: Drive iframe nahi kholte, Retry dikhate hain
+    if (OW.videoId !== vid || !box.isConnected) return;
+    spin.remove(); player.remove();
+    box.insertAdjacentHTML('beforeend', '<div class="ow-fail"><i data-lucide="cloud-off"></i><p>Video abhi load nahi ho paayi.</p><button class="btn btn-secondary btn-sm" onclick="originWatchRetry()" type="button">Retry</button></div>');
+    lucide.createIcons();
+  }, 25000);
+}
+function originWatchRetry() { const v = OW.videoId && Origin.videos.get(OW.videoId); if (v) originWatchPlay(v); }
+function openOriginWatch(videoId, btn) {
+  const video = Origin.videos.get(videoId); if (!video) return;
+  if (video.kind === 'post') { if (btn) originWatchVideo(videoId, btn); return; } // photo post: purana behaviour
+  originStopInline();
+  if (typeof stopReels === 'function') stopReels();
+  const page = document.getElementById('page-originWatch'); if (!page) return;
+  if (currentPage !== 'originWatch') Origin.watchReturn = currentPage;
+  document.body.classList.remove('reels-surface');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  page.classList.add('active'); currentPage = 'originWatch';
+  document.getElementById('topbarTitle').textContent = 'Video';
+  document.querySelectorAll('.side-nav[data-nav], .mnav[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === 'origin'));
+  closeSidebar(); closeAiHistory();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  Object.assign(OW, { videoId, ownerId: video.channelId || null, liked: false, likeCount: 0, comments: [], driveReady: true, likeBusy: false, sending: false });
+  page.innerHTML = originWatchHTML(video);
+  owRenderLike(); lucide.createIcons();
+  originWatchPlay(video);
+  const key = 'lx_origin_view_' + videoId;
+  try {
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1');
+      apiFetch('/api/videos?action=view', { method: 'POST', body: JSON.stringify({ videoId }) }).then(data => {
+        video.viewCount = data.viewCount;
+        const el = document.getElementById('owViews'); if (el && OW.videoId === videoId) el.textContent = Number(data.viewCount || 0).toLocaleString();
+      }).catch(() => {});
+    }
+  } catch (e) {}
+  originWatchLoadActivity(videoId);
+}
+function owRenderLike() {
+  const b = document.getElementById('owLike'); if (!b) return;
+  b.classList.toggle('on', !!OW.liked);
+  b.innerHTML = `<i data-lucide="heart"></i><span>${reelFmt(OW.likeCount)}</span>`;
+  lucide.createIcons();
+}
+function owRenderComments() {
+  const box = document.getElementById('owCommentList'); if (!box) return;
+  const me = State.user && State.user.id;
+  const total = document.getElementById('owCommentTotal'); if (total) total.textContent = reelFmt(OW.comments.length);
+  const title = document.getElementById('owCommentsTitle'); if (title) title.textContent = 'Comments (' + OW.comments.length + ')';
+  const input = document.getElementById('owCommentInput'), send = document.getElementById('owCommentSend');
+  if (input) input.disabled = !OW.driveReady; if (send) send.disabled = !OW.driveReady;
+  if (!OW.driveReady) { box.innerHTML = '<p class="ow-note">Is video ke creator ka Google Drive connected nahi hai, isliye abhi like/comment save nahi ho sakta.</p>'; return; }
+  box.innerHTML = OW.comments.length
+    ? OW.comments.map(c => `<div class="ow-comment">${originAvatarHTML({ name: c.name || 'User', avatarUrl: c.avatarUrl || '' })}<div class="ow-comment-body"><b>${esc(c.name || 'User')}</b><small>${esc(owTimeAgo(c.createdAt))}</small><p>${esc(c.body)}</p></div>${me && (me === c.userId || me === OW.ownerId) ? `<button class="ow-comment-del" onclick="originWatchDeleteComment('${esc(c.id)}')" aria-label="Delete comment" type="button"><i data-lucide="trash-2"></i></button>` : ''}</div>`).join('')
+    : '<p class="ow-note">Abhi koi comment nahi. Pehla comment aap karein.</p>';
+  lucide.createIcons();
+}
+async function originWatchLoadActivity(videoId) {
+  try {
+    const d = await apiFetch('/api/videos?action=activity&videoId=' + encodeURIComponent(videoId));
+    if (OW.videoId !== videoId) return;
+    Object.assign(OW, { ownerId: d.ownerId || OW.ownerId, liked: !!d.likedByMe, likeCount: d.likeCount || 0, comments: d.comments || [], driveReady: d.driveReady !== false });
+    owRenderLike(); owRenderComments();
+  } catch (e) {
+    if (OW.videoId !== videoId) return;
+    const box = document.getElementById('owCommentList');
+    if (box) { box.innerHTML = '<p class="ow-note">Comments load nahi ho paaye.</p><button class="btn btn-secondary btn-sm" onclick="originWatchLoadActivity(OW.videoId)" type="button">Retry</button>'; }
+  }
+}
+async function originWatchLike() {
+  if (OW.likeBusy || !OW.videoId) return;
+  if (!getToken()) { showToast('Like karne ke liye login karein', 'log-in'); return; }
+  if (!OW.driveReady) { showToast('Creator ka Google Drive connected nahi hai', 'alert-circle'); return; }
+  const videoId = OW.videoId, before = { liked: OW.liked, count: OW.likeCount };
+  OW.likeBusy = true;
+  OW.liked = !before.liked; OW.likeCount = Math.max(0, before.count + (before.liked ? -1 : 1)); owRenderLike();
+  try {
+    const d = await apiFetch('/api/videos?action=activity-like', { method: 'POST', body: JSON.stringify({ videoId }) });
+    if (OW.videoId === videoId && d.liked !== OW.liked) {
+      OW.liked = d.liked; OW.likeCount = Math.max(0, before.count + (d.liked ? (before.liked ? 0 : 1) : (before.liked ? -1 : 0))); owRenderLike();
+    }
+  } catch (e) {
+    if (OW.videoId === videoId) { OW.liked = before.liked; OW.likeCount = before.count; owRenderLike(); }
+    showToast(e.data && e.data.error || 'Like save nahi ho paaya', 'alert-circle');
+  }
+  OW.likeBusy = false;
+}
+async function originWatchComment() {
+  const input = document.getElementById('owCommentInput'); if (!input || OW.sending || !OW.videoId) return;
+  const body = input.value.trim(); if (!body) return;
+  if (!getToken()) { showToast('Comment karne ke liye login karein', 'log-in'); return; }
+  const videoId = OW.videoId; OW.sending = true;
+  const send = document.getElementById('owCommentSend'); if (send) send.disabled = true;
+  try {
+    const d = await apiFetch('/api/videos?action=activity-comment', { method: 'POST', body: JSON.stringify({ videoId, body }) });
+    if (OW.videoId === videoId) { OW.comments.unshift(d.comment); input.value = ''; owRenderComments(); }
+  } catch (e) { showToast(e.data && e.data.error || 'Comment save nahi ho paaya', 'alert-circle'); }
+  OW.sending = false;
+  const send2 = document.getElementById('owCommentSend'); if (send2) send2.disabled = !OW.driveReady;
+}
+async function originWatchDeleteComment(commentId) {
+  const videoId = OW.videoId; if (!videoId) return;
+  const index = OW.comments.findIndex(c => c.id === commentId); if (index < 0) return;
+  const removed = OW.comments.splice(index, 1)[0]; owRenderComments();
+  try {
+    await apiFetch('/api/videos?action=activity-comment-delete&videoId=' + encodeURIComponent(videoId) + '&id=' + encodeURIComponent(commentId), { method: 'DELETE' });
+  } catch (e) {
+    if (OW.videoId === videoId) { OW.comments.splice(index, 0, removed); owRenderComments(); }
+    showToast(e.data && e.data.error || 'Comment delete nahi ho paaya', 'alert-circle');
+  }
+}
 document.addEventListener('click', function (event) {
   const playButton = event.target.closest('.origin-play');
   if (playButton) return;
@@ -5366,6 +5569,7 @@ function applyUser() {
 let currentPage = 'home';
 const TITLES = { home: 'Home', courses: 'Courses', bookmarks: 'Bookmarks', origin: 'Origin Play', originChat: 'Chats', reels: 'Reels', posts: 'Posts', quiz: 'Quizzes', flashcards: 'Flashcards', certificates: 'Certificates', achievements: 'Achievements', courseDetail: 'Course', courseLevels: 'Select Level', lesson: 'Lesson', ai: 'AI Chat', profile: 'Profile', settings: 'Settings', admin: 'Admin Panel', quizTake: 'Quiz' };
 function nav(p) {
+  if (p !== 'originWatch' && typeof originWatchStop === 'function') originWatchStop();
   if (p !== 'reels' && typeof stopReels === 'function') stopReels();
   document.body.classList.toggle('reels-surface', p === 'reels');
   if (p !== 'originChat' && Origin.activeChatId) backToOriginChats();
@@ -6194,6 +6398,7 @@ async function adminSaveQuiz() {
 
 
 function openLesson(courseId, modIdx, lesIdx) {
+  if (typeof originWatchStop === 'function') originWatchStop();
   const c = COURSES.find(x => x.id === courseId); if (!c) return;
   const module = c.modules[modIdx]; const lesson = module.lessons[lesIdx];
   const lid = modIdx + '-' + lesIdx;
